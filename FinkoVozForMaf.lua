@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("0.0.5b")
+script_version("0.1.1b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -71,12 +71,14 @@ local settings = json(name_file):Load({
     second_window = false, -- Окошко статистики mbiz
     Finka = {},
     min_money = 0,
-    max_dist_render = 1000,
+    max_dist_render = 1200,
     autodelivery = false,   -- Автосдача финки
     autobias = false,       -- Автовзятие финки
     updateFinka = false,
     AutoScreenTime = false,
-    autoUpdateScript = false
+    autoUpdateScript = false,
+    font = 'Arial',
+    size_Text = 10,
 })
 local function save_settings()
     json(name_file):Save(settings)
@@ -541,12 +543,15 @@ local updateFinka = imgui.new.bool(settings.updateFinka)
 local AutoScreenTime = imgui.new.bool(settings.AutoScreenTime)
 local autoUpdateScript = imgui.new.bool(settings.autoUpdateScript)
 
-local font = renderCreateFont(settings.font, settings.sizeText, font_flag.BORDER)  -- шрифт
+local AnyFont = imgui.new.char[256](settings.font)
+local size_text = imgui.new.int(settings.size_Text)
+local font = renderCreateFont(settings.font, settings.size_Text, font_flag.BORDER)  -- шрифт
 
 local renderWindow = imgui.new.bool(true)
 local secondWindow = imgui.new.bool(settings.second_window)
 imgui.OnInitialize(function()
     imgui.GetIO().IniFilename = nil
+    theme()
 end)
 
 local resX, resY = getScreenResolution()
@@ -557,10 +562,11 @@ local relativeOffsetX, relativeOffsetY = 190, -150
 local newFrame = imgui.OnFrame(
     function() return renderWindow[0] end,
     function(player)
-        local sizeX, sizeY = 370, 300
+        local sizeX, sizeY = 370, 540
         imgui.SetNextWindowPos(imgui.ImVec2(currentFirstX, currentFirstY), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
         if imgui.Begin('FinkoVozik', renderWindow) then
+            imgui.Separator()
             if imgui.Checkbox(u8'Автообновление скрипта', autoUpdateScript) then
                 settings.autoUpdateScript = autoUpdateScript[0]
                 save_settings()
@@ -569,6 +575,7 @@ local newFrame = imgui.OnFrame(
                 settings.updateFinka = updateFinka[0]
                 save_settings()
             end
+            imgui.Separator()
             if imgui.Checkbox(u8'Рендер финки', render_fin) then
                 settings.render = render_fin[0]
                 save_settings()
@@ -577,6 +584,7 @@ local newFrame = imgui.OnFrame(
                 settings.render_circle = render_cir[0]
                 save_settings()
             end
+            imgui.Separator()
             if imgui.Checkbox(u8'Статистика mbiz', secondWindow) then
                 settings.second_window = secondWindow[0]
                 save_settings()
@@ -595,6 +603,7 @@ local newFrame = imgui.OnFrame(
                 settings.AutoScreenTime = AutoScreenTime[0]
                 save_settings()
             end
+            imgui.Separator()
             if imgui.Checkbox(u8'Автовзятие финки', autobias) then
                 settings.autobias = autobias[0]
                 save_settings()
@@ -604,7 +613,34 @@ local newFrame = imgui.OnFrame(
                 save_settings()
             end
 
+            local font = {
+                'Arial', 'Impact', 'Segoe Print', 'Times New Roman', 'OpenGostA'
+            }
+            imgui.Separator()
+            imgui.Text(u8'Шрифт текста')
+            imgui.Text(u8('Сейчас выбран: '..settings.font))
+            for _, v in pairs(font) do
 
+                if imgui.Button(u8(v)) then
+                    settings.font = v
+                    save_settings()
+
+                    thisScript():reload()
+                end
+                
+            end
+            imgui.Separator()
+            imgui.PushItemWidth(150)
+
+            if imgui.SliderInt(u8'Размер шрифта [По умол. - 10]', size_text, 0, 20) then
+                settings.size_Text = size_text[0]
+                save_settings()
+            end
+            if imgui.Button(u8'Обновить размер текста') then
+                thisScript():reload()
+            end
+            imgui.Separator()
+            imgui.PopItemWidth()
             imgui.End()
         end
     end
@@ -1293,4 +1329,71 @@ function samp_create_sync_data(sync_type, copy_from_player)
         end
     }
     return setmetatable({send = func_send}, mt)
+end
+
+function theme() -- Стиль mimgui
+    imgui.SwitchContext()
+    local style = imgui.GetStyle()
+    local colors = style.Colors
+    local clr = imgui.Col
+    local ImVec4 = imgui.ImVec4
+    local ImVec2 = imgui.ImVec2
+
+    style.WindowPadding = imgui.ImVec2(8, 8)
+    style.WindowRounding = 6
+    style.ChildRounding = 5
+    style.FramePadding = imgui.ImVec2(5, 3)
+    style.FrameRounding = 3.0
+    style.ItemSpacing = imgui.ImVec2(5, 4)
+    style.ItemInnerSpacing = imgui.ImVec2(4, 4)
+    style.IndentSpacing = 21
+    style.ScrollbarSize = 10.0
+    style.ScrollbarRounding = 13
+    style.GrabMinSize = 8
+    style.GrabRounding = 1
+    style.WindowTitleAlign = imgui.ImVec2(0.5, 0.5)
+    style.ButtonTextAlign = imgui.ImVec2(0.5, 0.5)
+
+    colors[clr.Text]                   = ImVec4(0.95, 0.96, 0.98, 1.00);
+    colors[clr.TextDisabled]           = ImVec4(0.29, 0.29, 0.29, 1.00);
+    colors[clr.WindowBg]               = ImVec4(0.14, 0.14, 0.14, 1.00);
+    colors[clr.ChildBg]                = ImVec4(0.12, 0.12, 0.12, 1.00);
+    colors[clr.PopupBg]                = ImVec4(0.08, 0.08, 0.08, 0.94);
+    colors[clr.Border]                 = ImVec4(0.14, 0.14, 0.14, 1.00);
+    colors[clr.BorderShadow]           = ImVec4(1.00, 1.00, 1.00, 0.10);
+    colors[clr.FrameBg]                = ImVec4(0.22, 0.22, 0.22, 1.00);
+    colors[clr.FrameBgHovered]         = ImVec4(0.18, 0.18, 0.18, 1.00);
+    colors[clr.FrameBgActive]          = ImVec4(0.09, 0.12, 0.14, 1.00);
+    colors[clr.TitleBg]                = ImVec4(0.14, 0.14, 0.14, 0.81);
+    colors[clr.TitleBgActive]          = ImVec4(0.14, 0.14, 0.14, 1.00);
+    colors[clr.TitleBgCollapsed]       = ImVec4(0.00, 0.00, 0.00, 0.51);
+    colors[clr.MenuBarBg]              = ImVec4(0.20, 0.20, 0.20, 1.00);
+    colors[clr.ScrollbarBg]            = ImVec4(0.02, 0.02, 0.02, 0.39);
+    colors[clr.ScrollbarGrab]          = ImVec4(0.36, 0.36, 0.36, 1.00);
+    colors[clr.ScrollbarGrabHovered]   = ImVec4(0.18, 0.22, 0.25, 1.00);
+    colors[clr.ScrollbarGrabActive]    = ImVec4(0.24, 0.24, 0.24, 1.00);
+    colors[clr.CheckMark]              = ImVec4(1.00, 0.28, 0.28, 1.00);
+    colors[clr.SliderGrab]             = ImVec4(1.00, 0.28, 0.28, 1.00);
+    colors[clr.SliderGrabActive]       = ImVec4(1.00, 0.28, 0.28, 1.00);
+    colors[clr.Button]                 = ImVec4(0.76, 0.16, 0.16, 1.00);
+    colors[clr.ButtonHovered]          = ImVec4(1.00, 0.39, 0.39, 1.00);
+    colors[clr.ButtonActive]           = ImVec4(1.00, 0.21, 0.21, 1.00);
+    colors[clr.Header]                 = ImVec4(1.00, 0.28, 0.28, 1.00);
+    colors[clr.HeaderHovered]          = ImVec4(1.00, 0.39, 0.39, 1.00);
+    colors[clr.HeaderActive]           = ImVec4(1.00, 0.21, 0.21, 1.00);
+    colors[clr.ResizeGrip]             = ImVec4(1.00, 0.28, 0.28, 1.00);
+    colors[clr.ResizeGripHovered]      = ImVec4(1.00, 0.39, 0.39, 1.00);
+    colors[clr.ResizeGripActive]       = ImVec4(1.00, 0.19, 0.19, 1.00);
+    colors[clr.Tab]                    = ImVec4(0.09, 0.09, 0.09, 1.00);
+    colors[clr.TabHovered]             = ImVec4(0.58, 0.23, 0.23, 1.00);
+    colors[clr.TabActive]              = ImVec4(0.76, 0.16, 0.16, 1.00);
+    colors[clr.Button]                 = ImVec4(0.40, 0.39, 0.38, 0.16);
+    colors[clr.ButtonHovered]          = ImVec4(0.40, 0.39, 0.38, 0.39);
+    colors[clr.ButtonActive]           = ImVec4(0.40, 0.39, 0.38, 1.00);
+    colors[clr.PlotLines]              = ImVec4(0.61, 0.61, 0.61, 1.00);
+    colors[clr.PlotLinesHovered]       = ImVec4(1.00, 0.43, 0.35, 1.00);
+    colors[clr.PlotHistogram]          = ImVec4(1.00, 0.21, 0.21, 1.00);
+    colors[clr.PlotHistogramHovered]   = ImVec4(1.00, 0.18, 0.18, 1.00);
+    colors[clr.TextSelectedBg]         = ImVec4(1.00, 0.32, 0.32, 1.00);
+    colors[clr.ModalWindowDimBg]   = ImVec4(0.26, 0.26, 0.26, 0.60);
 end
