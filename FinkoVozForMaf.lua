@@ -543,8 +543,6 @@ local autoUpdateScript = imgui.new.bool(settings.autoUpdateScript)
 
 local font = renderCreateFont(settings.font, settings.sizeText, font_flag.BORDER)  -- шрифт
 
-local distanceCache = {}
-
 local renderWindow = imgui.new.bool(true)
 local secondWindow = imgui.new.bool(settings.second_window)
 imgui.OnInitialize(function()
@@ -659,15 +657,6 @@ local newFrame = imgui.OnFrame(
             imgui.Columns(1)
             imgui.Separator() -- Конец таблицы №1
 
-            -- Расчёт расстояний
-            local distances = distanceCache or {}
-
-            -- Создаём таблицу соответствий ID -> расстояние
-            local distanceMap = {}
-            for id, distInfo in pairs(distances or {}) do
-                distanceMap[id] = distInfo.distance
-            end
-
             -- Отображение данных бизнесов
             if not settings.Finka or #settings.Finka == 0 then
                 imgui.Text(u8'Нет данных из таблицы settings.Finka, подгрузите информацию через /checkbiz')
@@ -688,17 +677,17 @@ local newFrame = imgui.OnFrame(
                     end
                     imgui.NextColumn()
 
-                    -- ?? Расстояние
+                    -- Расстояние
                     imgui.SetColumnWidth(-1, w.third)
 
                     local dist = getDistanceToBiz(infoBizMafia.idbiz)
                     local d = tostring(dist)
 
-                    --if dist then
+                    if dist then
                         imgui.Text(u8(d))
-                    --else
-                        --imgui.Text(u8"Неизвестно")
-                    --end
+                    else
+                        imgui.Text(u8"Неизвестно")
+                    end
                     imgui.NextColumn()
 
                     -- Деньги
@@ -726,7 +715,7 @@ local newFrame = imgui.OnFrame(
 function main()
     while not isSampAvailable() do wait(0) end
 
-    if settings.autoUpdateScript and autoupdate_loaded and enable_autoupdate and Update then
+    if autoupdate_loaded and enable_autoupdate and Update then
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
     end
 
@@ -785,7 +774,7 @@ function buildCoordCache() -- КЭШ (1 раз при старте)
 end
 
 local function isInFOV(screenX, screenY, margin) -- РЕНДЕР БИЗНЕСОВ ПО FOV
-    margin = margin or 0.25 -- 0.25 = примерно 25% экрана от центра
+    margin = margin or 0.25 -- 0.25 = 25% экрана от центра
 
     local sw, sh = getScreenResolution()
 
@@ -830,7 +819,7 @@ function drawFinkaOnScreen()
 
                     if ok then
 
-                        -- ?? FOV ФИЛЬТР (главное изменение)
+                        -- FOV ФИЛЬТР (главное изменение)
                         if not isInFOV(sx, sy, 0.45) then
                             goto continue
                         end
@@ -956,8 +945,6 @@ function drawFinkaOnScreen()
 end
 ]]
 
---{C0C0C0}[1] {FFFFFF}Автобазар(126)	{FFFFFF}Fed_Lester	{96E54C}:KK: 13 :K: 823.336	{96E54C}:KK: 13 :K: 474.956
---{C0C0C0}[126] {FFFFFF}Аренда транспорта(122)	{FFFFFF}Madiar_Musa	{96E54C}:K: 386.410	{96E54C}:KK: 5 :K: 239.841
 local processedPages = {}
 function ev.onShowDialog(id, st, tit, b1, b2, text)
 
@@ -969,7 +956,6 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
 
             -- ищем страницу
             for line in text:gmatch("[^\r\n]+") do
-                --{FFD700}[»»»] {FFFFE0}Следующая страница [5 / 10]
                 local p, mp = line:match("{FFD700}%[»»»%] {FFFFE0}Следующая страница %[(%d+) / (%d+)%]")
                 if p then
                     currentPage = tonumber(p)
@@ -1207,8 +1193,6 @@ function Draw3DCircle(x, y, z, radius, color, width, segments) -- 3d круги
     end
 end
 
---window.executeEvent('cef.modals.showModal', `["interactionSidebar",{"title": "Разгрузить деньги","description":"","timer":7,"buttons":[{"title": "Действие","keyTitle": "H","buttonColor": "#ffffff","backgroundColor": "rgba(171, 171, 171, 0.15)"}]}]`);
---window.executeEvent('cef.modals.showModal', `["interactionSidebar",{"title": "Загрузить деньги","description":"","timer":7,"buttons":[{"title": "Действие","keyTitle": "H","buttonColor": "#ffffff","backgroundColor": "rgba(171, 171, 171, 0.15)"}]}]`);
 addEventHandler('onReceivePacket', function (id, bs)
     if id == 220 then
         raknetBitStreamIgnoreBits(bs, 8)
