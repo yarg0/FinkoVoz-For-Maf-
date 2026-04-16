@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("0.1.1b")
+script_version("0.2.1b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -9,6 +9,7 @@ local imgui = require('mimgui')
 local vkeys = require 'vkeys'
 local ffi = require('ffi')
 local encoding = require('encoding')
+local faicons = require('fAwesome6')
 encoding.default = 'CP1251'
 local u8 = encoding.UTF8
 
@@ -70,6 +71,7 @@ local settings = json(name_file):Load({
     render_circle = false, -- Рендер кругов у бизнесов
     second_window = false, -- Окошко статистики mbiz
     Finka = {},
+    ignoreBizIds = {241,242,243,244,245,246,247,248},
     min_money = 0,
     max_dist_render = 1200,
     autodelivery = false,   -- Автосдача финки
@@ -102,6 +104,7 @@ if enable_autoupdate then
     end
 end
 --------------------------------------------------------------------------------------------------
+
 local coordbiz = {
 {1368.7700195313,-1279.8199462891,13.546999931335,"0"},
 {2333.5,61.624000549316,26.70599937439,"1"},
@@ -529,7 +532,7 @@ local coordbiz = {
 {-2015.0600585938,-2.1872000694275,34.324600219727,"467"},
 {-172.59700012207,1106,19.74220085144,"468"}
 }
-
+---------------------------------------- LOCAL SETTINGS ------------------------------------------
 local checkmbiz = false
 local isUpdatingFinka = false
 
@@ -542,16 +545,22 @@ local autobias = imgui.new.bool(settings.autobias)
 local updateFinka = imgui.new.bool(settings.updateFinka)
 local AutoScreenTime = imgui.new.bool(settings.AutoScreenTime)
 local autoUpdateScript = imgui.new.bool(settings.autoUpdateScript)
-
+local addignorebiz = imgui.new.char[256]() -- добавить биз в игнор лист
+local clearignorebiz = imgui.new.char[256]() -- удалить биз из игнор листа
 local AnyFont = imgui.new.char[256](settings.font)
 local size_text = imgui.new.int(settings.size_Text)
 local font = renderCreateFont(settings.font, settings.size_Text, font_flag.BORDER)  -- шрифт
 
-local renderWindow = imgui.new.bool(true)
+local renderWindow = imgui.new.bool(false)
 local secondWindow = imgui.new.bool(settings.second_window)
 imgui.OnInitialize(function()
     imgui.GetIO().IniFilename = nil
     theme()
+    local config = imgui.ImFontConfig()
+    config.MergeMode = true
+    config.PixelSnapH = true
+    iconRanges = imgui.new.ImWchar[3](faicons.min_range, faicons.max_range, 0)
+    imgui.GetIO().Fonts:AddFontFromMemoryCompressedBase85TTF(faicons.get_font_data_base85('solid'), 14, config, iconRanges)
 end)
 
 local resX, resY = getScreenResolution()
@@ -562,85 +571,135 @@ local relativeOffsetX, relativeOffsetY = 190, -150
 local newFrame = imgui.OnFrame(
     function() return renderWindow[0] end,
     function(player)
-        local sizeX, sizeY = 370, 540
+        local sizeX, sizeY = 370, 400
         imgui.SetNextWindowPos(imgui.ImVec2(currentFirstX, currentFirstY), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
         if imgui.Begin('FinkoVozik', renderWindow) then
-            imgui.Separator()
-            if imgui.Checkbox(u8'Автообновление скрипта', autoUpdateScript) then
-                settings.autoUpdateScript = autoUpdateScript[0]
-                save_settings()
-            end
-            if imgui.Checkbox(u8'Автообновление mbiz (раз в 30 сек)', updateFinka) then
-                settings.updateFinka = updateFinka[0]
-                save_settings()
-            end
-            imgui.Separator()
-            if imgui.Checkbox(u8'Рендер финки', render_fin) then
-                settings.render = render_fin[0]
-                save_settings()
-            end
-            if imgui.Checkbox(u8'Круги вокруг бизнесов', render_cir) then
-                settings.render_circle = render_cir[0]
-                save_settings()
-            end
-            imgui.Separator()
-            if imgui.Checkbox(u8'Статистика mbiz', secondWindow) then
-                settings.second_window = secondWindow[0]
-                save_settings()
-            end
-            imgui.Text(u8'Максимальное расстояние рендера:')
-            if imgui.SliderInt(u8'##Максимальное расстояние рендера', max_dist_render, 0, 3600) then
-                settings.max_dist_render = max_dist_render[0]
-                save_settings()
-            end
-            imgui.Text(u8'Минимальное кол-во денег для рендера:')
-            if imgui.SliderInt(u8'##Минимальное кол-во денег для рендера', min_money, 0, 5000000) then
-                settings.min_money = min_money[0]
-                save_settings()
-            end
-            if imgui.Checkbox(u8'Автоматический /time + скриншот при сдаче финки', AutoScreenTime) then
-                settings.AutoScreenTime = AutoScreenTime[0]
-                save_settings()
-            end
-            imgui.Separator()
-            if imgui.Checkbox(u8'Автовзятие финки', autobias) then
-                settings.autobias = autobias[0]
-                save_settings()
-            end
-            if imgui.Checkbox(u8'Автосдача финки', autodelivery) then
-                settings.autodelivery = autodelivery[0]
-                save_settings()
-            end
+            if imgui.BeginTabBar('Tabs') then -- задаём начало вкладок
+                if imgui.BeginTabItem(u8'Основная вкладка') then -- первая вкладка
+                    imgui.PushItemWidth(150)
+                    if imgui.Checkbox(faicons('download')..(u8' Автообновление скрипта'), autoUpdateScript) then
+                        settings.autoUpdateScript = autoUpdateScript[0]
+                        save_settings()
+                    end
+                    if imgui.Checkbox(u8'Автообновление mbiz (раз в 30 сек)', updateFinka) then
+                        settings.updateFinka = updateFinka[0]
+                        save_settings()
+                    end
+                    imgui.Separator()
+                    if imgui.Checkbox(u8'Рендер финки', render_fin) then
+                        settings.render = render_fin[0]
+                        save_settings()
+                    end
+                    if imgui.Checkbox(u8'Круги вокруг бизнесов', render_cir) then
+                        settings.render_circle = render_cir[0]
+                        save_settings()
+                    end
+                    imgui.Separator()
+                    if imgui.Checkbox(u8'Статистика mbiz', secondWindow) then
+                        settings.second_window = secondWindow[0]
+                        save_settings()
+                    end
+                    imgui.Text(u8'Максимальное расстояние рендера:')
+                    if imgui.SliderInt(u8'##Максимальное расстояние рендера', max_dist_render, 0, 3600) then
+                        settings.max_dist_render = max_dist_render[0]
+                        save_settings()
+                    end
+                    imgui.Text(u8'Минимальное кол-во денег для рендера:')
+                    if imgui.SliderInt(u8'##Минимальное кол-во денег для рендера', min_money, 0, 5000000) then
+                        settings.min_money = min_money[0]
+                        save_settings()
+                    end
+                    if imgui.Checkbox(u8'Автоматический /time + скриншот при сдаче финки', AutoScreenTime) then
+                        settings.AutoScreenTime = AutoScreenTime[0]
+                        save_settings()
+                    end
+                    imgui.Separator()
+                    if imgui.Checkbox(u8'Автовзятие финки', autobias) then
+                        settings.autobias = autobias[0]
+                        save_settings()
+                    end
+                    if imgui.Checkbox(u8'Автосдача финки', autodelivery) then
+                        settings.autodelivery = autodelivery[0]
+                        save_settings()
+                    end
+                    imgui.Separator()
+                    imgui.Text(u8'Текущий игнор-список бизнесов:')
+                    if imgui.BeginChild("IgnoreListDisplay", imgui.ImVec2(0, 50), true) then
+                        if settings.ignoreBizIds and #settings.ignoreBizIds > 0 then
+                            -- Формируем строку: ID через запятую
+                            local idListStr = table.concat(
+                            (function()
+                                local strIds = {}
+                                for _, id in ipairs(settings.ignoreBizIds) do
+                                    table.insert(strIds, tostring(id))
+                                end
+                                return strIds
+                            end)(), ", ")
 
-            local font = {
-                'Arial', 'Impact', 'Segoe Print', 'Times New Roman', 'OpenGostA'
-            }
-            imgui.Separator()
-            imgui.Text(u8'Шрифт текста')
-            imgui.Text(u8('Сейчас выбран: '..settings.font))
-            for _, v in pairs(font) do
-
-                if imgui.Button(u8(v)) then
-                    settings.font = v
-                    save_settings()
-
-                    thisScript():reload()
+                            imgui.Text(idListStr)
+                        else
+                            imgui.Text(u8'Список пуст')
+                        end
+                        imgui.EndChild()
+                    end
+                    imgui.InputText(u8"##Добавить бизнес в игнор-лист", addignorebiz, 256)
+                    imgui.SameLine()
+                    if imgui.Button(u8'Добавить в игнор-лист##игнорсписок') then
+                        addignore = u8:decode(ffi.string(addignorebiz))
+                        addignorelist(addignore)
+                    end
+                    imgui.InputText(u8"##Удалить бизнес из игнор-листа", clearignorebiz, 256)
+                    imgui.SameLine()
+                    if imgui.Button(u8'Удалить из игнор-листа##игнорсписок') then
+                        clearignore = u8:decode(ffi.string(clearignorebiz))
+                        if not text and text ~= "" then
+                            clearignorlist()
+                        else
+                            clearignorlist(clearignore)
+                        end
+                    end
+                    if imgui.IsItemHovered() then
+                        imgui.BeginTooltip()
+                        imgui.Text(u8'Если хотите очистить ВЕСЬ список просто нажмите на кнопку')
+                        imgui.EndTooltip()
+                    end
+                    imgui.PopItemWidth()
+                    imgui.EndTabItem() -- конец вкладки
                 end
-                
-            end
-            imgui.Separator()
-            imgui.PushItemWidth(150)
+                if imgui.BeginTabItem(u8'Визуал рендера') then -- вторая вкладка
+                    imgui.PushItemWidth(150)
+                    local font = {
+                        'Arial', 'Impact', 'Segoe Print', 'Times New Roman', 'OpenGostA'
+                    }
+                    imgui.Text(u8'Шрифт текста')
+                    imgui.Text(u8('Сейчас выбран: '..settings.font))
+                    for _, v in pairs(font) do
 
-            if imgui.SliderInt(u8'Размер шрифта [По умол. - 10]', size_text, 0, 20) then
-                settings.size_Text = size_text[0]
-                save_settings()
+                        if imgui.Button(u8(v)) then
+                            settings.font = v
+                            save_settings()
+
+                            thisScript():reload()
+                        end
+                        
+                    end
+                    imgui.Separator()
+                    
+
+                    if imgui.SliderInt(u8'Размер шрифта [По умол. - 10]', size_text, 0, 20) then
+                        settings.size_Text = size_text[0]
+                        save_settings()
+                    end
+                    if imgui.Button(u8'Обновить размер текста') then
+                        thisScript():reload()
+                    end
+                    imgui.Separator()
+                    imgui.PopItemWidth()
+                    imgui.EndTabItem() -- конец вкладки
+                end
+                imgui.EndTabBar() -- конец всех вкладок
             end
-            if imgui.Button(u8'Обновить размер текста') then
-                thisScript():reload()
-            end
-            imgui.Separator()
-            imgui.PopItemWidth()
             imgui.End()
         end
     end
@@ -661,16 +720,16 @@ local newFrame = imgui.OnFrame(
             -- Ширина колонок
             local w = {
                 first = 150,
-                second = 45,
+                second = 35,
                 third = 65,
-                four = 85,
+                four = 70,
                 five = 120
             }
 
             imgui.Columns(5)
-            imgui.Text(u8'Название бизнесов') imgui.SetColumnWidth(-1, w.first)
+            imgui.Text(faicons('briefcase_blank')..u8' Название бизнесов') imgui.SetColumnWidth(-1, w.first)
             imgui.NextColumn()
-            imgui.Text(u8'ID биз.') imgui.SetColumnWidth(-1, w.second)
+            imgui.Text(faicons('id_badge')) imgui.SetColumnWidth(-1, w.second)
             if imgui.IsItemClicked() then
                 sortFinkaById()
             end
@@ -683,13 +742,13 @@ local newFrame = imgui.OnFrame(
             imgui.SetColumnWidth(-1, w.third)
 
             imgui.NextColumn()
-            imgui.Text(u8'Деньги') imgui.SetColumnWidth(-1, w.four)
+            imgui.Text(faicons('badge_dollar')..u8' Финка') imgui.SetColumnWidth(-1, w.four)
             if imgui.IsItemClicked() then
                 sortFinkaByMoney()
             end
 
             imgui.NextColumn()
-            imgui.Text(u8'Владелец') imgui.SetColumnWidth(-1, w.five)
+            imgui.Text(faicons('id_card')) imgui.SetColumnWidth(-1, w.five)
             imgui.Columns(1)
             imgui.Separator() -- Конец таблицы №1
 
@@ -747,6 +806,7 @@ local newFrame = imgui.OnFrame(
             imgui.End()
         end
     end)
+    
 
 function main()
     while not isSampAvailable() do wait(0) end
@@ -823,6 +883,16 @@ local function isInFOV(screenX, screenY, margin) -- РЕНДЕР БИЗНЕСОВ ПО FOV
     return dx < margin and dy < margin
 end
 
+local function isIgnored(id)
+    id = tonumber(id)
+    for _, v in ipairs(settings.ignoreBizIds or {}) do
+        if tonumber(v) == id then
+            return true
+        end
+    end
+    return false
+end
+
 function drawFinkaOnScreen()
     if not settings.render then return end
 
@@ -834,6 +904,10 @@ function drawFinkaOnScreen()
     local maxDistSq = maxDist * maxDist
 
     for _, biz in ipairs(settings.Finka) do
+
+        if isIgnored(biz.idbiz) then
+            goto continue
+        end
 
         local money = (tonumber(biz.finkaKK) or 0) * 1000000 +
                       (tonumber(biz.finkaK) or 0) * 1000
@@ -855,7 +929,6 @@ function drawFinkaOnScreen()
 
                     if ok then
 
-                        -- FOV ФИЛЬТР (главное изменение)
                         if not isInFOV(sx, sy, 0.45) then
                             goto continue
                         end
@@ -1097,15 +1170,6 @@ function ev.onServerMessage(color, text)
 
 end
 
-local coordMap = {}
-
-function buildCoordMap(coordbiz)
-    coordMap = {}
-    for _, coord in ipairs(coordbiz) do
-        coordMap[coord[4]] = coord
-    end
-end
-
 function getDistanceToBiz(bizId)
     local index = tonumber(bizId)
     if not index then return nil end
@@ -1227,6 +1291,97 @@ function Draw3DCircle(x, y, z, radius, color, width, segments) -- 3d круги
     if prevX and firstX then
         renderDrawLine(prevX, prevY, firstX, firstY, width, color)
     end
+end
+
+function addignorelist(args) -- Добавить в игнор лист
+
+    -- Если аргументов нет — очищаем весь список
+    if not args or args == '' then
+        sampAddChatMessage(tag..' Команда используется в формате /addignorebiz id', base_color)
+        return
+    end
+
+    -- Обрабатываем аргумент как ID бизнеса
+    local targetId = tonumber(args)
+
+    -- Проверка: корректен ли ID (число)
+    if not targetId then
+        sampAddChatMessage(tag..' Ошибка: укажите корректный ID бизнеса (число)', base_color)
+        return
+    end
+
+    -- Поиск ID в игнор?списке
+    local foundIndex = nil
+    for i, id in ipairs(settings.ignoreBizIds) do
+        if id == targetId then
+            foundIndex = i
+            break
+        end
+    end
+
+    -- Если ID не найден
+    if foundIndex then
+        sampAddChatMessage(tag..' '..string.format('Бизнес с ID %d найден в игнор листе, второй раз добавлять не буду...', targetId), base_color)
+        return
+    end
+
+    -- Удаление найденного ID из списка
+    table.insert(settings.ignoreBizIds, targetId)
+    save_settings()
+    sampAddChatMessage(tag..' '..string.format('Бизнес с ID %d успешно добавлен в игнор лист', targetId), base_color)
+
+end
+
+function clearignorlist(args) -- Убрать из игнор листа
+    -- Если аргументов нет — очищаем весь список
+    if not args or args == '' then
+        settings.ignoreBizIds = {241,242,243,244,245,246,247,248}
+        save_settings()
+        sampAddChatMessage(tag..' Весь игнор список бизнесов очищен', base_color)
+        return
+    end
+
+    -- Обрабатываем аргумент как ID бизнеса
+    local targetId = tonumber(args)
+
+    -- Проверка: корректен ли ID (число)
+    if not targetId then
+        sampAddChatMessage(tag..' Ошибка: укажите корректный ID бизнеса (число)', base_color)
+        return
+    end
+
+    local foreverignore = {
+
+        242,243,244,245,247,248
+
+    }
+
+    -- Поиск ID в игнор?списке
+    local foundIndex = nil
+    for i, id in ipairs(settings.ignoreBizIds) do
+        if id == targetId then
+            for _, id in ipairs(foreverignore) do
+                if id ~= targetId then
+                    foundIndex = i
+                    break
+                else
+                    sampAddChatMessage(tag..' Вы пытаетесь удалить вечно заблокированный бизнес. Обратитесь к разработчику скрипта!', -1)
+                    return
+                end
+            end
+        end
+    end
+
+    -- Если ID не найден
+    if not foundIndex then
+        sampAddChatMessage(tag..' '..string.format('Бизнес с ID %d не найден в игнор листе', targetId), base_color)
+        return
+    end
+
+    -- Удаление найденного ID из списка
+    table.remove(settings.ignoreBizIds, foundIndex)
+    save_settings()
+    sampAddChatMessage(tag..' '..string.format('Бизнес с ID %d успешно удален из игнор листа', targetId), base_color)
 end
 
 addEventHandler('onReceivePacket', function (id, bs)
