@@ -780,14 +780,14 @@ local newFrame = imgui.OnFrame(
             imgui.NextColumn()
             imgui.Text('       '..faicons('badge_dollar'))
             if imgui.IsItemClicked() then
-                sortFinkaByDistance()
+                sortFinkaByMoney()
             end
             imgui.SetColumnWidth(-1, w.third)
 
             imgui.NextColumn()
             imgui.Text('   '..faicons('location_dot')) imgui.SetColumnWidth(-1, w.four)
             if imgui.IsItemClicked() then
-                sortFinkaByMoney()
+                sortFinkaByDistance()
             end
 
             imgui.NextColumn()
