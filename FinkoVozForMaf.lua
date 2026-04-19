@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("0.2.2b")
+script_version("0.2.2.1b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -606,7 +606,7 @@ end)
 local resX, resY = getScreenResolution()
 local currentFirstX, currentFirstY = resX / 2, resY / 2 -- Позиция первого окна
 -- Начальное смещение второго окна относительно первого
-local relativeOffsetX, relativeOffsetY = 190, -150
+local relativeOffsetX, relativeOffsetY = -940, -80
 
 local newFrame = imgui.OnFrame(
     function() return renderWindow[0] end,
@@ -753,7 +753,7 @@ local targetY = currentFirstY + relativeOffsetY
 local newFrame = imgui.OnFrame(
     function() return secondWindow[0] end,
     function(player)
-        local size, res = imgui.ImVec2(500, 450), imgui.ImVec2(getScreenResolution())
+        local size, res = imgui.ImVec2(300, 250), imgui.ImVec2(getScreenResolution())
         imgui.SetNextWindowSize(size, imgui.Cond.FirstUseEver)
         imgui.SetNextWindowPos(imgui.ImVec2(targetX, targetY), imgui.Cond.FirstUseEver)
         player.HideCursor = true
@@ -762,30 +762,30 @@ local newFrame = imgui.OnFrame(
             -- Заголовок таблицы
             -- Ширина колонок
             local w = {
-                first = 150,
+                first = 100,
                 second = 35,
-                third = 65,
-                four = 70,
+                third = 72,
+                four = 41,
                 five = 120
             }
 
             imgui.Columns(5)
-            imgui.Text(faicons('briefcase_blank')..u8' Название бизнесов') imgui.SetColumnWidth(-1, w.first)
+            imgui.Text(faicons('briefcase_blank')..u8' Бизнес') imgui.SetColumnWidth(-1, w.first)
             imgui.NextColumn()
-            imgui.Text(faicons('id_badge')) imgui.SetColumnWidth(-1, w.second)
+            imgui.Text('  '..faicons('id_badge')) imgui.SetColumnWidth(-1, w.second)
             if imgui.IsItemClicked() then
                 sortFinkaById()
             end
 
             imgui.NextColumn()
-            imgui.Text(u8'Дист. (м)')
+            imgui.Text('       '..faicons('badge_dollar'))
             if imgui.IsItemClicked() then
                 sortFinkaByDistance()
             end
             imgui.SetColumnWidth(-1, w.third)
 
             imgui.NextColumn()
-            imgui.Text(faicons('badge_dollar')..u8' Финка') imgui.SetColumnWidth(-1, w.four)
+            imgui.Text('   '..faicons('location_dot')) imgui.SetColumnWidth(-1, w.four)
             if imgui.IsItemClicked() then
                 sortFinkaByMoney()
             end
@@ -805,19 +805,27 @@ local newFrame = imgui.OnFrame(
                     -- Название бизнеса
                     imgui.Text(u8(infoBizMafia.name_biz))
                     imgui.SetColumnWidth(-1, w.first)
-                    imgui.NextColumn()
 
-                    -- ID бизнеса
+                    imgui.NextColumn() -- ID бизнеса
                     imgui.Text(tostring(infoBizMafia.idbiz))
                     imgui.SetColumnWidth(-1, w.second)
+
                     if imgui.IsItemClicked() then
                         sampSendChat('/findibiz '..infoBizMafia.idbiz)
                     end
-                    imgui.NextColumn()
 
-                    -- Расстояние
+                    imgui.NextColumn() -- Деньги
                     imgui.SetColumnWidth(-1, w.third)
+                    
+                    local moneyKK = (tonumber(infoBizMafia.finkaKK) or 0) * 1000000
+                    local moneyK = (tonumber(infoBizMafia.finkaK) or 0) * 1000
+                    local moneyall = moneyKK + moneyK
+                    imgui.Text(formatNumberWithDots(moneyall))
+                    
 
+                    imgui.NextColumn() -- Расстояние
+                    imgui.SetColumnWidth(-1, w.four)
+                    
                     local dist = getDistanceToBiz(infoBizMafia.idbiz)
                     local d = tostring(dist)
 
@@ -826,15 +834,8 @@ local newFrame = imgui.OnFrame(
                     else
                         imgui.Text(u8"Неизвестно")
                     end
-                    imgui.NextColumn()
 
-                    -- Деньги
-                    local moneyKK = (tonumber(infoBizMafia.finkaKK) or 0) * 1000000
-                    local moneyK = (tonumber(infoBizMafia.finkaK) or 0) * 1000
-                    local moneyall = moneyKK + moneyK
-
-                    imgui.Text(formatNumberWithDots(moneyall))
-                    imgui.SetColumnWidth(-1, w.four)
+                    
                     imgui.NextColumn()
 
                     -- Владелец
