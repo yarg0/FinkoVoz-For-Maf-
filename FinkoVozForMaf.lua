@@ -618,6 +618,9 @@ local newFrame = imgui.OnFrame(
             if imgui.BeginTabBar('Tabs') then -- задаём начало вкладок
                 if imgui.BeginTabItem(u8'Основная вкладка') then -- первая вкладка
                     imgui.PushItemWidth(150)
+                    if imgui.Button(u8'Перезагрузить скрипт') then
+                        thisScript():reload()
+                    end
                     if imgui.Checkbox(faicons('download')..(u8' Автообновление скрипта'), autoUpdateScript) then
                         settings.autoUpdateScript = autoUpdateScript[0]
                         save_settings()
@@ -859,6 +862,10 @@ function main()
 
     sampRegisterChatCommand('finka', function()
         renderWindow[0] = not renderWindow[0]
+    end)
+
+    sampRegisterChatCommand('rfinka', function ()
+        thisScript():reload()
     end)
 
     sampRegisterChatCommand('checkbiz', startFinkaUpdate)
