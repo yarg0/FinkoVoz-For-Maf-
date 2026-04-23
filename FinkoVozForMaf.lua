@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("0.2.2.1b")
+script_version("0.5b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -12,6 +12,7 @@ local encoding = require('encoding')
 local faicons = require('fAwesome6')
 encoding.default = 'CP1251'
 local u8 = encoding.UTF8
+---------------------------------------------------------------------------------------------------
 
 local tag = '{c99732}[FinkoVozka]{ffffff}'
 local base_color = 0xFFe69f35
@@ -20,13 +21,13 @@ local function message(text)
     if not text or text == '' then
         return
     end
-    sampAddChatMessage(tag..' '..text, base_color)
+    sampAddChatMessage(':u1f69b: '..tag..' '..text, base_color)
 end
 local function test_message(text)
     if not text or text == '' then
         return
     end
-    sampAddChatMessage('[TEST SCRIPT FinkoVozka]{ffffff} '..text, 0xff0000)
+    sampAddChatMessage(':u1f69b: [TEST MESSAGE FinkoVozka]{ffffff} '..text, 0xff0000)
 end
 
 -------------------------------------------- JSON SETTINGS ---------------------------------------
@@ -70,7 +71,10 @@ local settings = json(name_file):Load({
     render = false, -- Рендер финки
     render_circle = false, -- Рендер кругов у бизнесов
     second_window = false, -- Окошко статистики mbiz
+    third_window = false,  -- Окошко баланса финковозки
     Finka = {},
+    moneyCar = 0,
+    maxmoneyCar = 0,
     ignoreBizIds = {241,242,243,244,245,246,247,248},
     min_money = 0,
     max_dist_render = 1200,
@@ -81,6 +85,8 @@ local settings = json(name_file):Load({
     autoUpdateScript = false,
     font = 'Arial',
     size_Text = 10,
+    debugmessage_finka = false,
+    version = '', checkversion = 0,
 })
 local function save_settings()
     json(name_file):Save(settings)
@@ -104,6 +110,14 @@ if enable_autoupdate then
     end
 end
 --------------------------------------------------------------------------------------------------
+local update_log = {
+    '1. Теперь изменения для каждой версии будут появляться такой менюшкой (Дополнительно будет дублироваться в новом пункте "Настройки")',
+    '2. Добавлено отображение финки в тачке',
+    '3. Добавлен пункт "Настройки"', 
+    '4. Перенес игнор-список бизнесов в пункт "Настройки"',
+    '5. Скрыл сообщения касающиеся тех. части (Если хотите их включить, то в пункте "Настройки" есть соответствующий пункт)',
+    '6. Добавил иконки на некоторые пункты в менюшке'
+}
 
 local coordbiz = {
 {1368.7700195313,-1279.8199462891,13.546999931335,"0"},
@@ -173,7 +187,7 @@ local coordbiz = {
 {2539.5400390625,2083.9299316406,10.819999694824,"65"},
 {2085.669921875,2054.9699707031,11.057999610901,"66"},
 {-316.16198730469,829.75701904297,14.24199962616,"67"},
-{-1508.9100341797,2610.6999511719,55.835998535156,"68"},
+{-1509,2610,55,"68"},
 {2856.1999511719,1264.4399414063,11.390999794006,"69"},
 {2515.6999511719,1088.1700439453,10.821999549866,"70"},
 {2014.8199462891,1107.0200195313,10.819999694824,"71"},
@@ -586,6 +600,7 @@ local autobias = imgui.new.bool(settings.autobias)
 local updateFinka = imgui.new.bool(settings.updateFinka)
 local AutoScreenTime = imgui.new.bool(settings.AutoScreenTime)
 local autoUpdateScript = imgui.new.bool(settings.autoUpdateScript)
+local debugmessage_finka = imgui.new.bool(settings.debugmessage_finka)
 local addignorebiz = imgui.new.char[256]() -- добавить биз в игнор лист
 local clearignorebiz = imgui.new.char[256]() -- удалить биз из игнор листа
 local size_text = imgui.new.int(settings.size_Text)
@@ -593,6 +608,7 @@ local font = renderCreateFont(settings.font, settings.size_Text, font_flag.BORDE
 
 local renderWindow = imgui.new.bool(false)
 local secondWindow = imgui.new.bool(settings.second_window)
+local thirdWindow = imgui.new.bool(settings.third_window)
 imgui.OnInitialize(function()
     imgui.GetIO().IniFilename = nil
     theme()
@@ -606,7 +622,13 @@ end)
 local resX, resY = getScreenResolution()
 local currentFirstX, currentFirstY = resX / 2, resY / 2 -- Позиция первого окна
 -- Начальное смещение второго окна относительно первого
-local relativeOffsetX, relativeOffsetY = -940, -80
+local relativeOffsetX2, relativeOffsetY2 = -940, -80
+local targetX2 = currentFirstX + relativeOffsetX2
+local targetY2 = currentFirstY + relativeOffsetY2
+
+local relativeOffsetX3, relativeOffsetY3 = 700, -300
+local targetX3 = currentFirstX + relativeOffsetX3
+local targetY3 = currentFirstY + relativeOffsetY3
 
 local newFrame = imgui.OnFrame(
     function() return renderWindow[0] end,
@@ -614,10 +636,28 @@ local newFrame = imgui.OnFrame(
         local sizeX, sizeY = 370, 400
         imgui.SetNextWindowPos(imgui.ImVec2(currentFirstX, currentFirstY), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
-        if imgui.Begin('FinkoVozik', renderWindow) then
+        if imgui.Begin(faicons('truck')..' FinkoVozik '..faicons('truck'), renderWindow) then
             if imgui.BeginTabBar('Tabs') then -- задаём начало вкладок
-                if imgui.BeginTabItem(u8'Основная вкладка') then -- первая вкладка
+                if imgui.BeginTabItem(faicons('house')..u8' Основная вкладка') then -- первая вкладка
                     imgui.PushItemWidth(150)
+
+                    if settings.checkversion == 0 then
+                        imgui.OpenPopup('Change Log##updatemessage')
+                    end
+                    if imgui.BeginPopupModal(u8"Change Log##updatemessage", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoScrollbar) then
+                        --imgui.SetWindowSize(imgui.ImVec2(150, 200))
+                        imgui.Text(u8('Нововведения / Изменения в скрипте. ver: ' .. thisScript().version))
+                        for i, v in pairs(update_log) do
+                            imgui.Text(u8(v))
+                        end
+                        if imgui.Button(u8'Закрыть') then
+                            settings.checkversion = 1
+                            save_settings()
+                            imgui.CloseCurrentPopup()
+                        end
+                        imgui.EndPopup()
+                    end
+
                     if imgui.Button(u8'Перезагрузить скрипт') then
                         thisScript():reload()
                     end
@@ -625,48 +665,90 @@ local newFrame = imgui.OnFrame(
                         settings.autoUpdateScript = autoUpdateScript[0]
                         save_settings()
                     end
-                    if imgui.Checkbox(u8'Автообновление mbiz (раз в 30 сек)', updateFinka) then
+                    if imgui.Checkbox(faicons('calendar_lines_pen')..u8' Автообновление mbiz (раз в 30 сек)', updateFinka) then
                         settings.updateFinka = updateFinka[0]
                         save_settings()
                     end
                     imgui.Separator()
-                    if imgui.Checkbox(u8'Рендер финки', render_fin) then
+                    if imgui.Checkbox(faicons('share')..u8' Рендер финки', render_fin) then
                         settings.render = render_fin[0]
                         save_settings()
                     end
-                    if imgui.Checkbox(u8'Круги вокруг бизнесов', render_cir) then
+                    if imgui.Checkbox(faicons('circle')..u8' Круги вокруг бизнесов', render_cir) then
                         settings.render_circle = render_cir[0]
                         save_settings()
                     end
                     imgui.Separator()
-                    if imgui.Checkbox(u8'Статистика mbiz', secondWindow) then
+                    if imgui.Checkbox(faicons('camera').. u8' Заполненность финковозки', thirdWindow) then
+                        settings.third_window = thirdWindow[0]
+                        save_settings()
+                    end
+                    if imgui.Checkbox(faicons('book')..u8' Статистика mbiz', secondWindow) then
                         settings.second_window = secondWindow[0]
                         save_settings()
                     end
-                    imgui.Text(u8'Максимальное расстояние рендера:')
+                    imgui.Text(faicons('globe_stand')..u8' Максимальное расстояние рендера:')
                     if imgui.SliderInt(u8'##Максимальное расстояние рендера', max_dist_render, 0, 3600) then
                         settings.max_dist_render = max_dist_render[0]
                         save_settings()
-                    end
-                    imgui.Text(u8'Минимальное кол-во денег для рендера:')
+                    end--<i class="fa-solid "></i>
+                    imgui.Text(faicons('money_bill')..u8' Минимальное кол-во денег для рендера:')
                     if imgui.SliderInt(u8'##Минимальное кол-во денег для рендера', min_money, 0, 5000000) then
                         settings.min_money = min_money[0]
                         save_settings()
                     end
-                    if imgui.Checkbox(u8'Автоматический /time + скриншот при сдаче финки', AutoScreenTime) then
+                    --imgui.CustomSlider(u8'Slider##2', min_money, true, 5, 20, nil, 200)
+                    if imgui.Checkbox(faicons('clock')..u8' Автоматический /time + скриншот при сдаче финки', AutoScreenTime) then
                         settings.AutoScreenTime = AutoScreenTime[0]
                         save_settings()
                     end
                     imgui.Separator()
-                    if imgui.Checkbox(u8'Автовзятие финки', autobias) then
+                    if imgui.Checkbox(faicons('hand_fist')..u8 ' Автовзятие финки', autobias) then
                         settings.autobias = autobias[0]
                         save_settings()
                     end
-                    if imgui.Checkbox(u8'Автосдача финки', autodelivery) then
+                    if imgui.Checkbox(faicons('hand_holding')..u8' Автосдача финки', autodelivery) then
                         settings.autodelivery = autodelivery[0]
                         save_settings()
                     end
+                    
+                    imgui.EndTabItem() -- конец вкладки
+                end
+                if imgui.BeginTabItem(faicons('eye')..u8' Визуал рендера') then -- вторая вкладка
+                    imgui.PushItemWidth(150)
+                    local font = {
+                        'Arial', 'Impact', 'Segoe Print', 'Times New Roman', 'OpenGostA'
+                    }
+                    imgui.Text(u8'Шрифт рендер текста')
+                    imgui.Text(u8('Сейчас выбран: '..settings.font))
+                    for _, v in pairs(font) do
+
+                        if imgui.Button(u8(v)) then
+                            settings.font = v
+                            save_settings()
+
+                            thisScript():reload()
+                        end
+                        
+                    end
                     imgui.Separator()
+                    if imgui.SliderInt(u8'Размер шрифта [По умол. - 10]', size_text, 0, 20) then
+                        settings.size_Text = size_text[0]
+                        save_settings()
+                    end
+                    if imgui.Button(u8'Обновить размер текста') then
+                        thisScript():reload()
+                    end
+                    imgui.Separator()
+                    imgui.PopItemWidth()
+                    imgui.EndTabItem() -- конец вкладки
+                end
+                if imgui.BeginTabItem(faicons('gears')..u8' Настройки') then -- вторая вкладка
+                    if imgui.Checkbox(u8'Отладочное сообщение о бизнесах с mbiz', debugmessage_finka) then
+                        settings.debugmessage_finka = debugmessage_finka[0]
+                        save_settings()
+                    end
+                    imgui.PushItemWidth(150)
                     imgui.Text(u8'Текущий игнор-список бизнесов:')
                     if imgui.BeginChild("IgnoreListDisplay", imgui.ImVec2(0, 50), true) then
                         if settings.ignoreBizIds and #settings.ignoreBizIds > 0 then
@@ -708,37 +790,12 @@ local newFrame = imgui.OnFrame(
                         imgui.EndTooltip()
                     end
                     imgui.PopItemWidth()
-                    imgui.EndTabItem() -- конец вкладки
-                end
-                if imgui.BeginTabItem(u8'Визуал рендера') then -- вторая вкладка
-                    imgui.PushItemWidth(150)
-                    local font = {
-                        'Arial', 'Impact', 'Segoe Print', 'Times New Roman', 'OpenGostA'
-                    }
-                    imgui.Text(u8'Шрифт текста')
-                    imgui.Text(u8('Сейчас выбран: '..settings.font))
-                    for _, v in pairs(font) do
 
-                        if imgui.Button(u8(v)) then
-                            settings.font = v
-                            save_settings()
-
-                            thisScript():reload()
+                    if imgui.CollapsingHeader(u8('Update Log | Ver: ' .. thisScript().version)) then
+                        for i, v in pairs(update_log) do
+                            imgui.TextWrapped(u8(v))
                         end
-                        
                     end
-                    imgui.Separator()
-                    
-
-                    if imgui.SliderInt(u8'Размер шрифта [По умол. - 10]', size_text, 0, 20) then
-                        settings.size_Text = size_text[0]
-                        save_settings()
-                    end
-                    if imgui.Button(u8'Обновить размер текста') then
-                        thisScript():reload()
-                    end
-                    imgui.Separator()
-                    imgui.PopItemWidth()
                     imgui.EndTabItem() -- конец вкладки
                 end
                 imgui.EndTabBar() -- конец всех вкладок
@@ -748,14 +805,12 @@ local newFrame = imgui.OnFrame(
     end
 )
 
-local targetX = currentFirstX + relativeOffsetX
-local targetY = currentFirstY + relativeOffsetY
 local newFrame = imgui.OnFrame(
     function() return secondWindow[0] end,
     function(player)
         local size, res = imgui.ImVec2(300, 250), imgui.ImVec2(getScreenResolution())
         imgui.SetNextWindowSize(size, imgui.Cond.FirstUseEver)
-        imgui.SetNextWindowPos(imgui.ImVec2(targetX, targetY), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowPos(imgui.ImVec2(targetX2, targetY2), imgui.Cond.FirstUseEver)
         player.HideCursor = true
         if imgui.Begin(u8'Статистика', secondWindow) then
 
@@ -770,28 +825,28 @@ local newFrame = imgui.OnFrame(
             }
 
             imgui.Columns(5)
-            imgui.Text(faicons('briefcase_blank')..u8' Бизнес') imgui.SetColumnWidth(-1, w.first)
+            imgui.CenterColumnText(faicons('briefcase_blank')) imgui.SetColumnWidth(-1, w.first)
             imgui.NextColumn()
-            imgui.Text('  '..faicons('id_badge')) imgui.SetColumnWidth(-1, w.second)
+            imgui.CenterColumnText(faicons('id_badge')) imgui.SetColumnWidth(-1, w.second)
             if imgui.IsItemClicked() then
                 sortFinkaById()
             end
 
             imgui.NextColumn()
-            imgui.Text('       '..faicons('badge_dollar'))
+            imgui.CenterColumnText(faicons('badge_dollar'))
             if imgui.IsItemClicked() then
                 sortFinkaByMoney()
             end
             imgui.SetColumnWidth(-1, w.third)
 
             imgui.NextColumn()
-            imgui.Text('   '..faicons('location_dot')) imgui.SetColumnWidth(-1, w.four)
+            imgui.CenterColumnText(faicons('location_dot')) imgui.SetColumnWidth(-1, w.four)
             if imgui.IsItemClicked() then
                 sortFinkaByDistance()
             end
 
             imgui.NextColumn()
-            imgui.Text(faicons('id_card')) imgui.SetColumnWidth(-1, w.five)
+            imgui.CenterColumnText(faicons('id_card')) imgui.SetColumnWidth(-1, w.five)
             imgui.Columns(1)
             imgui.Separator() -- Конец таблицы №1
 
@@ -850,13 +905,128 @@ local newFrame = imgui.OnFrame(
             imgui.End()
         end
     end)
-    
+
+
+local newFrame = imgui.OnFrame(
+    function() return thirdWindow[0] end,
+    function(player)
+        local size, res = imgui.ImVec2(250, 40), imgui.ImVec2(getScreenResolution())
+        imgui.SetNextWindowSize(size, imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowPos(imgui.ImVec2(targetX3, targetY3), imgui.Cond.FirstUseEver)
+        player.HideCursor = true
+        if imgui.Begin(u8'111', thirdWindow, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoCollapse) then
+
+            local n = tostring(formatNumberWithDots(settings.moneyCar))
+            local maxMoney = settings.maxmoneyCar * 1000000
+            imgui.ProgressBar(settings.moneyCar/maxMoney,imgui.ImVec2(200,24),u8('Денег в финковозке: '..n))
+
+            imgui.End()
+        end
+    end)
+
+
+function imgui.CenterColumnText(text)
+    imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(text).x / 2)
+    imgui.Text(text)
+end
+
+function imgui.CustomSlider(str_id, value, type, min, max, sformat, width)
+    local text      = str_id:gsub('##.+', '')
+    local sformat   = sformat or (type and '%d' or '%0.3f')
+    local width     = width or 100
+
+    local DL        = imgui.GetWindowDrawList()
+    local p         = imgui.GetCursorScreenPos()
+
+    local function math_round(x)
+        local a = tostring(x):gsub('%d+%.', '0.')
+        if tonumber(a) > 0.5 then
+            return math.ceil(x)
+        else
+            return math.floor(x)
+        end
+    end
+    local function bringVec4To(from, to, start_time, duration)
+        local timer = os.clock() - start_time
+        if timer >= 0.00 and timer <= duration then
+            local count = timer / (duration / 100)
+            return imgui.ImVec4(
+                from.x + (count * (to.x - from.x) / 100),
+                from.y + (count * (to.y - from.y) / 100),
+                from.z + (count * (to.z - from.z) / 100),
+                from.w + (count * (to.w - from.w) / 100)
+            ), true
+        end
+        return (timer > duration) and to or from, false
+    end
+
+    if UI_CUSTOM_SLIDER == nil then UI_CUSTOM_SLIDER = {} end
+    if UI_CUSTOM_SLIDER[str_id] == nil then
+        UI_CUSTOM_SLIDER[str_id] = {
+            active = false,
+            hovered = false,
+            start = 0
+        }
+    end
+
+    imgui.InvisibleButton(str_id, imgui.ImVec2(width, 20))
+
+    UI_CUSTOM_SLIDER[str_id].active = imgui.IsItemActive()
+    if UI_CUSTOM_SLIDER[str_id].hovered ~= imgui.IsItemHovered() then
+        UI_CUSTOM_SLIDER[str_id].hovered = imgui.IsItemHovered()
+        UI_CUSTOM_SLIDER[str_id].start = os.clock()
+    end
+
+    local colorPadding = bringVec4To(
+        UI_CUSTOM_SLIDER[str_id].hovered and imgui.ImVec4(0.3, 0.3, 0.3, 0.8) or imgui.ImVec4(0.95, 0.95, 0.95, 0.8),
+        UI_CUSTOM_SLIDER[str_id].hovered and imgui.ImVec4(0.95, 0.95, 0.95, 0.8) or imgui.ImVec4(0.3, 0.3, 0.3, 0.8),
+        UI_CUSTOM_SLIDER[str_id].start, 0.2
+    )
+ 
+    local colorBackGroundAfter = 0xAA252525
+    local colorBackGroundBefore = 0xAA333333
+    local colorCircle = 0xBBE7E7E7
+
+    if UI_CUSTOM_SLIDER[str_id].active then
+        local c = imgui.GetMousePos()
+        if c.x - p.x >= 0 and c.x - p.x <= width then
+            local s = c.x - p.x - 10
+            local pr = s / (width - 20)
+            local v = min + (max - min) * pr
+            if v >= min and v <= max then
+                value[0] = type and math_round(v) or v
+            else
+                value[0] = v < min and min or max
+            end
+        end
+    end
+
+    local posCircleX = p.x + 10 + (width - 20) / (max - min) * (value[0] - min)
+
+    if posCircleX > p.x + 10 then DL:AddRectFilled(imgui.ImVec2(p.x, p.y), imgui.ImVec2(posCircleX, p.y + 20), colorBackGroundBefore, 10, 15) end
+    if posCircleX < p.x + width - 10 then DL:AddRectFilled(imgui.ImVec2(posCircleX, p.y), imgui.ImVec2(p.x + width, p.y + 20), colorBackGroundAfter, 10, 15) end
+    DL:AddRect(imgui.ImVec2(p.x, p.y), imgui.ImVec2(p.x + width, p.y + 20), imgui.GetColorU32Vec4(colorPadding), 10, 15)
+    DL:AddCircleFilled(imgui.ImVec2(posCircleX, p.y + 10), 10, colorCircle)
+
+    local sf = imgui.CalcTextSize(string.format(sformat, value[0]))
+    local st = imgui.CalcTextSize(text)
+    DL:AddText(imgui.ImVec2(p.x + width / 2 - sf.x / 2, p.y + 10 - sf.y / 2), imgui.GetColorU32Vec4(imgui.GetStyle().Colors[imgui.Col.Text]), string.format(sformat, value[0]))
+    DL:AddText(imgui.ImVec2(p.x + width + 5, p.y + 10 - st.y / 2), imgui.GetColorU32Vec4(imgui.GetStyle().Colors[imgui.Col.Text]), text)
+
+    return UI_CUSTOM_SLIDER[str_id].active
+end
 
 function main()
     while not isSampAvailable() do wait(0) end
 
     if autoupdate_loaded and enable_autoupdate and Update then
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
+    end
+
+    if settings.version ~= thisScript().version then
+        settings.version = thisScript().version
+        settings.checkversion = 0
+        save_settings()
     end
 
     message('Скрипт загружен!')
@@ -869,8 +1039,12 @@ function main()
         thisScript():reload()
     end)
 
+    sampRegisterChatCommand('unlfinka', function ()
+        thisScript():unload()
+    end)
+
     sampRegisterChatCommand('checkbiz', startFinkaUpdate)
-    
+
     buildCoordCache()
     lua_thread.create(autoUpdateFinka)
     while true do
@@ -1127,6 +1301,57 @@ end
 local processedPages = {}
 function ev.onShowDialog(id, st, tit, b1, b2, text)
 
+    for value in text:gmatch("[^\r\n]+") do
+        if value:find("грузовике тепер") then
+
+            local kk, k, maxmoneyCar = value:match(':KK: (%d+) :K: ([%d%.]+)/:KK: (%d+).')
+
+            if not kk then
+                k, maxmoneyCar = value:match(":K: ([%d%.]+)/:KK: (%d+).")
+                kk = '0'
+            end
+
+            if kk and k then
+                local money = tonumber(kk) * 1000000 + tonumber((k:gsub('%.', '')))
+                if settings.debugmessage_finka then
+                    test_message(formatNumberWithDots(money))
+                    test_message('Денег с :K: - ' .. (k:gsub('%.', '')))
+                    test_message(kk..' '..k)
+                end
+
+                if settings.moneyCar ~= maxmoneyCar then
+                    settings.maxmoneyCar = maxmoneyCar
+                end
+                settings.moneyCar = money
+                save_settings()
+            end
+            
+        end
+
+        if value:find("в общак вашей орг") then
+            settings.moneyCar = 0
+            save_settings()
+
+            if settings.AutoScreenTime then
+                lua_thread.create(function()
+                    sampSendChat("/time")
+                    wait(200)
+                    setVirtualKeyDown(vkeys.VK_F8, true)
+                    wait(100)
+                    setVirtualKeyDown(vkeys.VK_F8, false)
+                end)
+            end
+
+            sampSendDialogResponse(id, 1, 0, nil)
+            return false
+        end
+    end
+
+    if text:find("успешно загрузили в ваш грузовик") then
+        sampSendDialogResponse(id, 1, 0, nil)
+        return false
+    end
+
     if checkmbiz then
         if not FinkaUpdater.active then return end
         if tit:match('Бизнесов под крышей') then
@@ -1135,7 +1360,7 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
 
             local currentPage, maxPages
 
-            -- ?? Определение страницы
+            -- Определение страницы
             for line in text:gmatch("[^\r\n]+") do
                 local p, mp = line:match("{FFD700}%[»»»%] {FFFFE0}Следующая страница %[(%d+) / (%d+)%]")
                 if p then
@@ -1150,16 +1375,16 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                 maxPages = maxPages or currentPage
             end
 
-            -- ?? Уже обработано
+            -- Уже обработано
             if FinkaUpdater.processedPages[currentPage] then return false end
             FinkaUpdater.processedPages[currentPage] = true
 
-            -- ?? Очистка
+            -- Очистка
             if currentPage == 1 then
                 FinkaUpdater.data = {}
             end
 
-            -- ?? Парсинг
+            -- Парсинг
             for line in text:gmatch("[^\r\n]+") do
 
                 local name_biz, idbiz, name_player, finkaKK, finkaK =
@@ -1182,7 +1407,7 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                 end
             end
 
-            -- ?? Перелистывание
+            -- Перелистывание
             if currentPage < maxPages then
                 lua_thread.create(function()
                     wait(90)
@@ -1194,7 +1419,7 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                     sampSendDialogResponse(id, 1, btn, "")
                 end)
             else
-                -- ? Завершение
+                -- Завершение
                 lua_thread.create(function()
                     wait(150)
 
@@ -1203,7 +1428,9 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                     settings.Finka = FinkaUpdater.data
                     save_settings()
 
-                    test_message("Сбор завершён. Всего: "..#settings.Finka)
+                    if settings.debugmessage_finka then
+                        test_message(":true: Сбор завершён. Всего: "..#settings.Finka..'  :true:')
+                    end
 
                     FinkaUpdater.active = false
                     checkmbiz = false
@@ -1214,32 +1441,23 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
         end
     end
 
-    if text:find("успешно загрузили в ваш грузовик") then
-        sampSendDialogResponse(id, 1, 0, nil)
-        return false
-    end
-
-    if text:find("в общак вашей организац") then
-        if settings.AutoScreenTime then
-            lua_thread.create(function()
-                sampSendChat("/time")
-                wait(200)
-                setVirtualKeyDown(vkeys.VK_F8, true)
-                wait(100)
-                setVirtualKeyDown(vkeys.VK_F8, false)
-            end)
-        end
-
-        sampSendDialogResponse(id, 1, 0, nil)
-        return false
-    end
-    
 end
 
 function ev.onServerMessage(color, text)
-    
+
     if text:match('%[Подсказка%] {ffffff}На карте отмечено место где можно разгрузить деньги.') then
         startFinkaUpdate()
+    end
+
+    if text:match('%[Ошибка%]{ffffff} В этом бизнесе недостаточно денег, чтобы забрать их.') then
+        return
+    end
+
+    --[Ошибка] {ffffff}Этот бизнес крышует не ваша мафия.
+    if text:match('%[Ошибка%] {ffffff}Этот бизнес крышует не ваша мафия.') then
+        local text_m = (':x: [Ошибка] {ffffff}Этот бизнес крышует не ваша мафия. Автообновление финки не запущено! :x:')
+        sampAddChatMessage(text_m, 0xffff6347)
+        return false
     end
 
 end
