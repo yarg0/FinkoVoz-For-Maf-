@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("0.5b")
+script_version("0.7b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -27,7 +27,7 @@ local function test_message(text)
     if not text or text == '' then
         return
     end
-    sampAddChatMessage(':u1f69b: [TEST MESSAGE FinkoVozka]{ffffff} '..text, 0xff0000)
+    sampAddChatMessage(':u1f69b: [DEBUG MESSAGE FinkoVozka]{ffffff} '..text, 0xff0000)
 end
 
 -------------------------------------------- JSON SETTINGS ---------------------------------------
@@ -68,25 +68,28 @@ end
 
 local name_file = 'FinkoVozka.json'
 local settings = json(name_file):Load({
-    render = false, -- Рендер финки
-    render_circle = false, -- Рендер кругов у бизнесов
-    second_window = false, -- Окошко статистики mbiz
-    third_window = false,  -- Окошко баланса финковозки
+    render = false,                 -- Рендер финки
+    render_circle = false,          -- Рендер кругов у бизнесов
+    second_window = false,          -- Окошко статистики mbiz
+    third_window = false,           -- Окошко баланса финковозки
     Finka = {},
     moneyCar = 0,
     maxmoneyCar = 0,
     ignoreBizIds = {241,242,243,244,245,246,247,248},
     min_money = 0,
     max_dist_render = 1200,
-    autodelivery = false,   -- Автосдача финки
-    autobias = false,       -- Автовзятие финки
+    autodelivery = false,           -- Автосдача финки
+    autobias = false,               -- Автовзятие финки
     updateFinka = false,
+    AUOTFAETYTM = false,            -- Автообновление финки после каждого взятия денег | auto-update of the finca after each time you take money [AUOTFAETYTM]
     AutoScreenTime = false,
     autoUpdateScript = false,
     font = 'Arial',
     size_Text = 10,
     debugmessage_finka = false,
     version = '', checkversion = 0,
+    ignoredialog_zagruzka = false,
+    ignoredialog_razgruzka = false,
 })
 local function save_settings()
     json(name_file):Save(settings)
@@ -111,12 +114,11 @@ if enable_autoupdate then
 end
 --------------------------------------------------------------------------------------------------
 local update_log = {
-    '1. Теперь изменения для каждой версии будут появляться такой менюшкой (Дополнительно будет дублироваться в новом пункте "Настройки")',
-    '2. Добавлено отображение финки в тачке',
-    '3. Добавлен пункт "Настройки"', 
-    '4. Перенес игнор-список бизнесов в пункт "Настройки"',
-    '5. Скрыл сообщения касающиеся тех. части (Если хотите их включить, то в пункте "Настройки" есть соответствующий пункт)',
-    '6. Добавил иконки на некоторые пункты в менюшке'
+    '1. Добавил пункт "Обновление mbiz после взятия финки" - отвечает за мгновенное обновление финки после взятия денег с бизнеса',
+    '2. Добавлено в пункт "Настройки" включение/отключение показа диалоговых окон загрузки/разгрузки денег',
+    '3. Постарался улучшить обновление mbiz (После 4-5 перевезенных мною лично финковозок, проблем прошлых версий уже не наблюдал)', 
+    '4. Улучшил показ статистики "Денег в финковозке"',
+    '5. Иные минорные изменения',
 }
 
 local coordbiz = {
@@ -174,7 +176,7 @@ local coordbiz = {
 {-2257.6806640625,2278.0158691406,5.159900188446,"52"},
 {157.2380065918,-1808.5899658203,3.7379999160767,"53"},
 {2647.2661132813,1263.9001464844,10.85000038147,"54"},
-{1671,1814,10.819999694824,"55"},
+{2262,2036,13,"55"},
 {1687.4167480469,1788.7238769531,10.87889957428,"56"},
 {2085.8400878906,2486.25,11.078000068665,"57"},
 {-19.208999633789,1175.2299804688,19.562999725342,"58"},
@@ -598,9 +600,12 @@ local max_dist_render = imgui.new.int(settings.max_dist_render)
 local autodelivery = imgui.new.bool(settings.autodelivery)
 local autobias = imgui.new.bool(settings.autobias)
 local updateFinka = imgui.new.bool(settings.updateFinka)
+local AUOTFAETYTM = imgui.new.bool(settings.AUOTFAETYTM)
 local AutoScreenTime = imgui.new.bool(settings.AutoScreenTime)
 local autoUpdateScript = imgui.new.bool(settings.autoUpdateScript)
 local debugmessage_finka = imgui.new.bool(settings.debugmessage_finka)
+local ignoredialog_zagruzka = imgui.new.bool(settings.ignoredialog_zagruzka)
+local ignoredialog_razgruzka = imgui.new.bool(settings.ignoredialog_razgruzka)
 local addignorebiz = imgui.new.char[256]() -- добавить биз в игнор лист
 local clearignorebiz = imgui.new.char[256]() -- удалить биз из игнор листа
 local size_text = imgui.new.int(settings.size_Text)
@@ -622,7 +627,7 @@ end)
 local resX, resY = getScreenResolution()
 local currentFirstX, currentFirstY = resX / 2, resY / 2 -- Позиция первого окна
 -- Начальное смещение второго окна относительно первого
-local relativeOffsetX2, relativeOffsetY2 = -940, -80
+local relativeOffsetX2, relativeOffsetY2 = -940, -65
 local targetX2 = currentFirstX + relativeOffsetX2
 local targetY2 = currentFirstY + relativeOffsetY2
 
@@ -667,6 +672,10 @@ local newFrame = imgui.OnFrame(
                     end
                     if imgui.Checkbox(faicons('calendar_lines_pen')..u8' Автообновление mbiz (раз в 30 сек)', updateFinka) then
                         settings.updateFinka = updateFinka[0]
+                        save_settings()
+                    end
+                    if imgui.Checkbox(faicons('tape')..u8' Обновление mbiz после взятия финки', AUOTFAETYTM) then
+                        settings.AUOTFAETYTM = AUOTFAETYTM[0]
                         save_settings()
                     end
                     imgui.Separator()
@@ -748,6 +757,14 @@ local newFrame = imgui.OnFrame(
                         settings.debugmessage_finka = debugmessage_finka[0]
                         save_settings()
                     end
+                    if imgui.Checkbox(u8'Скрыть диалог загрузки финки', ignoredialog_zagruzka) then
+                        settings.ignoredialog_zagruzka = ignoredialog_zagruzka[0]
+                        save_settings()
+                    end
+                    if imgui.Checkbox(u8'Скрыть диалог разгрузки финки', ignoredialog_razgruzka) then
+                        settings.ignoredialog_razgruzka = ignoredialog_razgruzka[0]
+                        save_settings()
+                    end
                     imgui.PushItemWidth(150)
                     imgui.Text(u8'Текущий игнор-список бизнесов:')
                     if imgui.BeginChild("IgnoreListDisplay", imgui.ImVec2(0, 50), true) then
@@ -823,19 +840,23 @@ local newFrame = imgui.OnFrame(
                 four = 41,
                 five = 120
             }
-
             imgui.Columns(5)
             imgui.CenterColumnText(faicons('briefcase_blank')) imgui.SetColumnWidth(-1, w.first)
+            if imgui.IsItemClicked() then
+                sort = 0
+            end
             imgui.NextColumn()
             imgui.CenterColumnText(faicons('id_badge')) imgui.SetColumnWidth(-1, w.second)
             if imgui.IsItemClicked() then
                 sortFinkaById()
+                sort = 1
             end
 
             imgui.NextColumn()
             imgui.CenterColumnText(faicons('badge_dollar'))
             if imgui.IsItemClicked() then
                 sortFinkaByMoney()
+                sort = 2
             end
             imgui.SetColumnWidth(-1, w.third)
 
@@ -843,6 +864,7 @@ local newFrame = imgui.OnFrame(
             imgui.CenterColumnText(faicons('location_dot')) imgui.SetColumnWidth(-1, w.four)
             if imgui.IsItemClicked() then
                 sortFinkaByDistance()
+                sort = 3
             end
 
             imgui.NextColumn()
@@ -924,96 +946,9 @@ local newFrame = imgui.OnFrame(
         end
     end)
 
-
 function imgui.CenterColumnText(text)
     imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(text).x / 2)
     imgui.Text(text)
-end
-
-function imgui.CustomSlider(str_id, value, type, min, max, sformat, width)
-    local text      = str_id:gsub('##.+', '')
-    local sformat   = sformat or (type and '%d' or '%0.3f')
-    local width     = width or 100
-
-    local DL        = imgui.GetWindowDrawList()
-    local p         = imgui.GetCursorScreenPos()
-
-    local function math_round(x)
-        local a = tostring(x):gsub('%d+%.', '0.')
-        if tonumber(a) > 0.5 then
-            return math.ceil(x)
-        else
-            return math.floor(x)
-        end
-    end
-    local function bringVec4To(from, to, start_time, duration)
-        local timer = os.clock() - start_time
-        if timer >= 0.00 and timer <= duration then
-            local count = timer / (duration / 100)
-            return imgui.ImVec4(
-                from.x + (count * (to.x - from.x) / 100),
-                from.y + (count * (to.y - from.y) / 100),
-                from.z + (count * (to.z - from.z) / 100),
-                from.w + (count * (to.w - from.w) / 100)
-            ), true
-        end
-        return (timer > duration) and to or from, false
-    end
-
-    if UI_CUSTOM_SLIDER == nil then UI_CUSTOM_SLIDER = {} end
-    if UI_CUSTOM_SLIDER[str_id] == nil then
-        UI_CUSTOM_SLIDER[str_id] = {
-            active = false,
-            hovered = false,
-            start = 0
-        }
-    end
-
-    imgui.InvisibleButton(str_id, imgui.ImVec2(width, 20))
-
-    UI_CUSTOM_SLIDER[str_id].active = imgui.IsItemActive()
-    if UI_CUSTOM_SLIDER[str_id].hovered ~= imgui.IsItemHovered() then
-        UI_CUSTOM_SLIDER[str_id].hovered = imgui.IsItemHovered()
-        UI_CUSTOM_SLIDER[str_id].start = os.clock()
-    end
-
-    local colorPadding = bringVec4To(
-        UI_CUSTOM_SLIDER[str_id].hovered and imgui.ImVec4(0.3, 0.3, 0.3, 0.8) or imgui.ImVec4(0.95, 0.95, 0.95, 0.8),
-        UI_CUSTOM_SLIDER[str_id].hovered and imgui.ImVec4(0.95, 0.95, 0.95, 0.8) or imgui.ImVec4(0.3, 0.3, 0.3, 0.8),
-        UI_CUSTOM_SLIDER[str_id].start, 0.2
-    )
- 
-    local colorBackGroundAfter = 0xAA252525
-    local colorBackGroundBefore = 0xAA333333
-    local colorCircle = 0xBBE7E7E7
-
-    if UI_CUSTOM_SLIDER[str_id].active then
-        local c = imgui.GetMousePos()
-        if c.x - p.x >= 0 and c.x - p.x <= width then
-            local s = c.x - p.x - 10
-            local pr = s / (width - 20)
-            local v = min + (max - min) * pr
-            if v >= min and v <= max then
-                value[0] = type and math_round(v) or v
-            else
-                value[0] = v < min and min or max
-            end
-        end
-    end
-
-    local posCircleX = p.x + 10 + (width - 20) / (max - min) * (value[0] - min)
-
-    if posCircleX > p.x + 10 then DL:AddRectFilled(imgui.ImVec2(p.x, p.y), imgui.ImVec2(posCircleX, p.y + 20), colorBackGroundBefore, 10, 15) end
-    if posCircleX < p.x + width - 10 then DL:AddRectFilled(imgui.ImVec2(posCircleX, p.y), imgui.ImVec2(p.x + width, p.y + 20), colorBackGroundAfter, 10, 15) end
-    DL:AddRect(imgui.ImVec2(p.x, p.y), imgui.ImVec2(p.x + width, p.y + 20), imgui.GetColorU32Vec4(colorPadding), 10, 15)
-    DL:AddCircleFilled(imgui.ImVec2(posCircleX, p.y + 10), 10, colorCircle)
-
-    local sf = imgui.CalcTextSize(string.format(sformat, value[0]))
-    local st = imgui.CalcTextSize(text)
-    DL:AddText(imgui.ImVec2(p.x + width / 2 - sf.x / 2, p.y + 10 - sf.y / 2), imgui.GetColorU32Vec4(imgui.GetStyle().Colors[imgui.Col.Text]), string.format(sformat, value[0]))
-    DL:AddText(imgui.ImVec2(p.x + width + 5, p.y + 10 - st.y / 2), imgui.GetColorU32Vec4(imgui.GetStyle().Colors[imgui.Col.Text]), text)
-
-    return UI_CUSTOM_SLIDER[str_id].active
 end
 
 function main()
@@ -1280,13 +1215,23 @@ local FinkaUpdater = {
     active = false,
     session = 0,
     processedPages = {},
-    data = {}
+    data = {},
+    lastUpdate = 0
 }
 
 function startFinkaUpdate()
-    if FinkaUpdater.active then
-        -- можно заменить на очередь, но пока просто игнор
+    local now = os.clock()
+
+    -- антиспам (3 сек)
+    if now - FinkaUpdater.lastUpdate < 3 then
         return
+    end
+    FinkaUpdater.lastUpdate = now
+
+    -- если завис — сбрасываем
+    if FinkaUpdater.active then
+        test_message("Обнаружен зависший апдейт, сброс...")
+        FinkaUpdater.active = false
     end
 
     checkmbiz = true
@@ -1296,6 +1241,19 @@ function startFinkaUpdate()
     FinkaUpdater.session = FinkaUpdater.session + 1
     FinkaUpdater.processedPages = {}
     FinkaUpdater.data = {}
+
+    local mySession = FinkaUpdater.session
+
+    -- таймаут защита
+    lua_thread.create(function()
+        wait(7000)
+
+        if settings.debugmessage_finka and FinkaUpdater.active and mySession == FinkaUpdater.session then
+            test_message("Таймаут обновления финки — сброс")
+            FinkaUpdater.active = false
+            checkmbiz = false
+        end
+    end)
 end
 
 local processedPages = {}
@@ -1305,18 +1263,30 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
         if value:find("грузовике тепер") then
 
             local kk, k, maxmoneyCar = value:match(':KK: (%d+) :K: ([%d%.]+)/:KK: (%d+).')
-
+            
             if not kk then
                 k, maxmoneyCar = value:match(":K: ([%d%.]+)/:KK: (%d+).")
                 kk = '0'
+                if settings.debugmessage_finka then
+                    test_message(' Если нету :KKV:, то :KK: - ' .. kk.. ' | :K: - '..k)
+                end
+            end
+
+            --{FFFFFF}В грузовике теперь: {C1A81C}:KK: 50/:KK: 50.
+            if not k then
+                kk, maxmoneyCar = value:match(":KK: (%d+)/:KK: (%d+).")
+                k = '0'
+                if settings.debugmessage_finka then
+                    test_message(' Если нету :KV:, то :KK: - ' .. kk.. ' | :K: - '..k)
+                end
             end
 
             if kk and k then
                 local money = tonumber(kk) * 1000000 + tonumber((k:gsub('%.', '')))
                 if settings.debugmessage_finka then
-                    test_message(formatNumberWithDots(money))
-                    test_message('Денег с :K: - ' .. (k:gsub('%.', '')))
-                    test_message(kk..' '..k)
+                    test_message('Денег в финковозке: ' .. formatNumberWithDots(money))
+                    --test_message('Денег с :K: - ' .. (k:gsub('%.', '')))
+                    test_message(' :KK: - ' .. kk.. ' | :K: - '..k)
                 end
 
                 if settings.moneyCar ~= maxmoneyCar then
@@ -1342,27 +1312,30 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                 end)
             end
 
+            if settings.ignoredialog_razgruzka then
+                sampSendDialogResponse(id, 1, 0, nil)
+                return false
+            end
+        end
+    end
+
+    if text:find("успешно загрузили в ваш грузовик") then
+        if settings.ignoredialog_zagruzka then
             sampSendDialogResponse(id, 1, 0, nil)
             return false
         end
     end
 
-    if text:find("успешно загрузили в ваш грузовик") then
-        sampSendDialogResponse(id, 1, 0, nil)
-        return false
-    end
-
-    if checkmbiz then
-        if not FinkaUpdater.active then return end
+    if checkmbiz and FinkaUpdater.active then
+        sampCloseCurrentDialogWithButton(0)
         if tit:match('Бизнесов под крышей') then
 
             local mySession = FinkaUpdater.session
-
             local currentPage, maxPages
 
-            -- Определение страницы
+            -- определяем страницу
             for line in text:gmatch("[^\r\n]+") do
-                local p, mp = line:match("{FFD700}%[»»»%] {FFFFE0}Следующая страница %[(%d+) / (%d+)%]")
+                local p, mp = line:match("Следующая страница %[(%d+) / (%d+)%]")
                 if p then
                     currentPage = tonumber(p)
                     maxPages = tonumber(mp)
@@ -1370,23 +1343,22 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                 end
             end
 
+            -- если не нашли — считаем вручную
             if not currentPage then
-                currentPage = #FinkaUpdater.processedPages + 1
-                maxPages = maxPages or currentPage
+                local count = 0
+                for _ in pairs(FinkaUpdater.processedPages) do
+                    count = count + 1
+                end
+                currentPage = count + 1
+                maxPages = currentPage
             end
 
-            -- Уже обработано
+            -- защита от дублей
             if FinkaUpdater.processedPages[currentPage] then return false end
             FinkaUpdater.processedPages[currentPage] = true
 
-            -- Очистка
-            if currentPage == 1 then
-                FinkaUpdater.data = {}
-            end
-
-            -- Парсинг
+            -- парсинг бизнесов
             for line in text:gmatch("[^\r\n]+") do
-
                 local name_biz, idbiz, name_player, finkaKK, finkaK =
                     line:match("{C0C0C0}%[%d+%] {FFFFFF}(.+)%((%d+)%)	{FFFFFF}(.+_.+)	{96E54C}:KK: (%d+) :K: (%d+%.%d+)	{96E54C}:KK: %d+ :K: %d+.%d+")
 
@@ -1396,7 +1368,7 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                     finkaKK = "0"
                 end
 
-                if name_biz then
+                if name_biz and idbiz then
                     table.insert(FinkaUpdater.data, {
                         name_biz = name_biz,
                         idbiz = idbiz,
@@ -1407,10 +1379,10 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                 end
             end
 
-            -- Перелистывание
+            -- листаем дальше
             if currentPage < maxPages then
                 lua_thread.create(function()
-                    wait(90)
+                    wait(50)
 
                     if mySession ~= FinkaUpdater.session then return end
                     if not FinkaUpdater.active then return end
@@ -1419,9 +1391,9 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                     sampSendDialogResponse(id, 1, btn, "")
                 end)
             else
-                -- Завершение
+                -- завершение
                 lua_thread.create(function()
-                    wait(150)
+                    wait(90)
 
                     if mySession ~= FinkaUpdater.session then return end
 
@@ -1429,7 +1401,7 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                     save_settings()
 
                     if settings.debugmessage_finka then
-                        test_message(":true: Сбор завершён. Всего: "..#settings.Finka..'  :true:')
+                        test_message("Финка обновлена. Всего: " .. #settings.Finka)
                     end
 
                     FinkaUpdater.active = false
@@ -1446,7 +1418,9 @@ end
 function ev.onServerMessage(color, text)
 
     if text:match('%[Подсказка%] {ffffff}На карте отмечено место где можно разгрузить деньги.') then
-        startFinkaUpdate()
+        if settings.AUOTFAETYTM then
+            startFinkaUpdate()
+        end
     end
 
     if text:match('%[Ошибка%]{ffffff} В этом бизнесе недостаточно денег, чтобы забрать их.') then
@@ -1458,6 +1432,19 @@ function ev.onServerMessage(color, text)
         local text_m = (':x: [Ошибка] {ffffff}Этот бизнес крышует не ваша мафия. Автообновление финки не запущено! :x:')
         sampAddChatMessage(text_m, 0xffff6347)
         return false
+    end
+
+    if text:match('%[Ошибка%] {ffffff}Машина уже перегружена деньгами!') then
+        settings.moneyCar = 50000000
+        save_settings()
+    end
+
+    if text:match('{DFCFCF}%[Подсказка%] {DC4747}На сервере есть инвентарь, используйте клавишу Y для работы с ним.') then
+        if settings.moneyCar > 0 then
+            message('Очищаю баланс финковозки, потому что вы перезашли на сервер!')
+            settings.moneyCar = 0
+            save_settings()
+        end
     end
 
 end
@@ -1852,3 +1839,181 @@ function theme() -- Стиль mimgui
     colors[clr.TextSelectedBg]         = ImVec4(1.00, 0.32, 0.32, 1.00);
     colors[clr.ModalWindowDimBg]   = ImVec4(0.26, 0.26, 0.26, 0.60);
 end
+
+--[[
+local FinkaUpdater = {
+    active = false,
+    session = 0,
+    processedPages = {},
+    data = {}
+}
+
+function startFinkaUpdate()
+    if FinkaUpdater.active then
+        -- можно заменить на очередь, но пока просто игнор
+        return
+    end
+
+    checkmbiz = true
+    sampSendChat("/mbiz")
+
+    FinkaUpdater.active = true
+    FinkaUpdater.session = FinkaUpdater.session + 1
+    FinkaUpdater.processedPages = {}
+    FinkaUpdater.data = {}
+end
+
+local processedPages = {}
+function ev.onShowDialog(id, st, tit, b1, b2, text)
+
+    for value in text:gmatch("[^\r\n]+") do
+        if value:find("грузовике тепер") then
+
+            local kk, k, maxmoneyCar = value:match(':KK: (%d+) :K: ([%d%.]+)/:KK: (%d+).')
+
+            if not kk then
+                k, maxmoneyCar = value:match(":K: ([%d%.]+)/:KK: (%d+).")
+                kk = '0'
+            elseif not k then
+                kk, maxmoneyCar = value:match(":KK: (%d+)/:KK: (%d+).")
+                k = '0'
+            end
+
+            if kk and k then
+                local money = tonumber(kk) * 1000000 + tonumber((k:gsub('%.', '')))
+                if settings.debugmessage_finka then
+                    test_message('Денег в финковозке: ' .. formatNumberWithDots(money))
+                    --test_message('Денег с :K: - ' .. (k:gsub('%.', '')))
+                    --test_message(kk..' '..k)
+                end
+
+                if settings.moneyCar ~= maxmoneyCar then
+                    settings.maxmoneyCar = maxmoneyCar
+                end
+                settings.moneyCar = money
+                save_settings()
+            end
+            
+        end
+
+        if value:find("в общак вашей орг") then
+            settings.moneyCar = 0
+            save_settings()
+
+            if settings.AutoScreenTime then
+                lua_thread.create(function()
+                    sampSendChat("/time")
+                    wait(200)
+                    setVirtualKeyDown(vkeys.VK_F8, true)
+                    wait(100)
+                    setVirtualKeyDown(vkeys.VK_F8, false)
+                end)
+            end
+
+            if settings.ignoredialog_razgruzka then
+                sampSendDialogResponse(id, 1, 0, nil)
+                return false
+            end
+        end
+    end
+
+    if text:find("успешно загрузили в ваш грузовик") then
+        if settings.ignoredialog_zagruzka then
+            sampSendDialogResponse(id, 1, 0, nil)
+            return false
+        end
+    end
+
+    if checkmbiz then
+        sampCloseCurrentDialogWithButton(0)
+        if not FinkaUpdater.active then return end
+        if tit:match('Бизнесов под крышей') then
+
+            local mySession = FinkaUpdater.session
+
+            local currentPage, maxPages
+
+            -- Определение страницы
+            for line in text:gmatch("[^\r\n]+") do
+                local p, mp = line:match("{FFD700}%[»»»%] {FFFFE0}Следующая страница %[(%d+) / (%d+)%]")
+                if p then
+                    currentPage = tonumber(p)
+                    maxPages = tonumber(mp)
+                    break
+                end
+            end
+
+            if not currentPage then
+                currentPage = #FinkaUpdater.processedPages + 1
+                maxPages = maxPages or currentPage
+            end
+
+            -- Уже обработано
+            if FinkaUpdater.processedPages[currentPage] then return false end
+            FinkaUpdater.processedPages[currentPage] = true
+
+            -- Очистка
+            if currentPage == 1 then
+                FinkaUpdater.data = {}
+            end
+
+            -- Парсинг
+            for line in text:gmatch("[^\r\n]+") do
+
+                local name_biz, idbiz, name_player, finkaKK, finkaK =
+                    line:match("{C0C0C0}%[%d+%] {FFFFFF}(.+)%((%d+)%)	{FFFFFF}(.+_.+)	{96E54C}:KK: (%d+) :K: (%d+%.%d+)	{96E54C}:KK: %d+ :K: %d+.%d+")
+
+                if not name_biz then
+                    name_biz, idbiz, name_player, finkaK =
+                        line:match("{C0C0C0}%[%d+%] {FFFFFF}(.+)%((%d+)%)	{FFFFFF}(.+_.+)	{96E54C}:K: (%d+.%d+)	{96E54C}:KK: %d+ :K: %d+.%d+")
+                    finkaKK = "0"
+                end
+
+                if name_biz then
+                    table.insert(FinkaUpdater.data, {
+                        name_biz = name_biz,
+                        idbiz = idbiz,
+                        name_player = name_player,
+                        finkaKK = finkaKK,
+                        finkaK = finkaK
+                    })
+                end
+            end
+
+            -- Перелистывание
+            if currentPage < maxPages then
+                lua_thread.create(function()
+                    wait(90)
+
+                    if mySession ~= FinkaUpdater.session then return end
+                    if not FinkaUpdater.active then return end
+
+                    local btn = (currentPage == 1) and 30 or 31
+                    sampSendDialogResponse(id, 1, btn, "")
+                end)
+            else
+                -- Завершение
+                lua_thread.create(function()
+                    wait(150)
+
+                    if mySession ~= FinkaUpdater.session then return end
+
+                    settings.Finka = FinkaUpdater.data
+                    save_settings()
+
+                    if settings.debugmessage_finka then
+                        test_message(":true: Сбор завершён. Всего: "..#settings.Finka..'  :true:')
+                    end
+
+                    FinkaUpdater.active = false
+                    checkmbiz = false
+                end)
+            end
+
+            return false
+        end
+    end
+
+end
+
+]]
