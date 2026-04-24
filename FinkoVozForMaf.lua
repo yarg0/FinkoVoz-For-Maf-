@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("0.7b")
+script_version("0.7.3b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -697,7 +697,7 @@ local newFrame = imgui.OnFrame(
                         save_settings()
                     end
                     imgui.Text(faicons('globe_stand')..u8' Максимальное расстояние рендера:')
-                    if imgui.SliderInt(u8'##Максимальное расстояние рендера', max_dist_render, 0, 3600) then
+                    if imgui.SliderInt(u8'##Максимальное расстояние рендера', max_dist_render, 0, 10000) then
                         settings.max_dist_render = max_dist_render[0]
                         save_settings()
                     end--<i class="fa-solid "></i>
@@ -728,7 +728,7 @@ local newFrame = imgui.OnFrame(
                     local font = {
                         'Arial', 'Impact', 'Segoe Print', 'Times New Roman', 'OpenGostA'
                     }
-                    imgui.Text(u8'Шрифт рендер текста')
+                    imgui.CenterText('Шрифт текста у рендера')
                     imgui.Text(u8('Сейчас выбран: '..settings.font))
                     for _, v in pairs(font) do
 
@@ -766,7 +766,7 @@ local newFrame = imgui.OnFrame(
                         save_settings()
                     end
                     imgui.PushItemWidth(150)
-                    imgui.Text(u8'Текущий игнор-список бизнесов:')
+                    imgui.CenterText('Текущий игнор-список бизнесов:')
                     if imgui.BeginChild("IgnoreListDisplay", imgui.ImVec2(0, 50), true) then
                         if settings.ignoreBizIds and #settings.ignoreBizIds > 0 then
                             -- Формируем строку: ID через запятую
@@ -825,7 +825,7 @@ local newFrame = imgui.OnFrame(
 local newFrame = imgui.OnFrame(
     function() return secondWindow[0] end,
     function(player)
-        local size, res = imgui.ImVec2(300, 250), imgui.ImVec2(getScreenResolution())
+        local size, res = imgui.ImVec2(395, 250), imgui.ImVec2(getScreenResolution())
         imgui.SetNextWindowSize(size, imgui.Cond.FirstUseEver)
         imgui.SetNextWindowPos(imgui.ImVec2(targetX2, targetY2), imgui.Cond.FirstUseEver)
         player.HideCursor = true
@@ -836,7 +836,7 @@ local newFrame = imgui.OnFrame(
             local w = {
                 first = 100,
                 second = 35,
-                third = 72,
+                third = 75,
                 four = 41,
                 five = 120
             }
@@ -874,7 +874,7 @@ local newFrame = imgui.OnFrame(
 
             -- Отображение данных бизнесов
             if not settings.Finka or #settings.Finka == 0 then
-                imgui.Text(u8'Нет данных из таблицы settings.Finka, подгрузите информацию через /checkbiz')
+                imgui.TextWrapped(u8'Нет данных из таблицы settings.Finka, подгрузите информацию через /checkbiz')
             else
                 for i, infoBizMafia in ipairs(settings.Finka) do
                     imgui.Columns(5)
@@ -938,9 +938,16 @@ local newFrame = imgui.OnFrame(
         player.HideCursor = true
         if imgui.Begin(u8'111', thirdWindow, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoCollapse) then
 
-            local n = tostring(formatNumberWithDots(settings.moneyCar))
-            local maxMoney = settings.maxmoneyCar * 1000000
-            imgui.ProgressBar(settings.moneyCar/maxMoney,imgui.ImVec2(200,24),u8('Денег в финковозке: '..n))
+            local moneyCar = settings.moneyCar or 0
+            local maxMoney = (settings.maxmoneyCar or 10) * 1000000
+
+            if moneyCar <= 0 then
+                imgui.Text(u8("Начните перевозить финку, чтобы \nпошел прогресс"))
+            else
+                local n = formatNumberWithDots(moneyCar)
+                imgui.ProgressBar(moneyCar / maxMoney, imgui.ImVec2(200, 24),
+                    u8('Денег в финковозке: ' .. n))
+            end
 
             imgui.End()
         end
@@ -949,6 +956,10 @@ local newFrame = imgui.OnFrame(
 function imgui.CenterColumnText(text)
     imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(text).x / 2)
     imgui.Text(text)
+end
+function imgui.CenterText(text)
+    imgui.SetCursorPosX(imgui.GetWindowWidth()/2-imgui.CalcTextSize(u8(text)).x/2)
+    imgui.Text(u8(text))
 end
 
 function main()
@@ -990,16 +1001,6 @@ function main()
         end
         
     end
-end
-
-function updateFin()
-    --if isUpdatingFinka then return end
-
-    checkmbiz = true
-    --isUpdatingFinka = true
-    --processedPages = {}
-
-    sampSendChat("/mbiz")
 end
 
 function autoUpdateFinka()
