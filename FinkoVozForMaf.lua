@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("0.7.3b")
+script_version("1b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -22,6 +22,12 @@ local function message(text)
         return
     end
     sampAddChatMessage(':u1f69b: '..tag..' '..text, base_color)
+end
+local function warning_message(text)
+    if not text or text == '' then
+        return
+    end
+    sampAddChatMessage(':u1f69b: {ff0000}[WARNING] {ffffff}'..tag..' '..text..' {ff0000}[WARNING]', base_color)
 end
 local function test_message(text)
     if not text or text == '' then
@@ -962,6 +968,63 @@ function imgui.CenterText(text)
     imgui.Text(u8(text))
 end
 
+local Access = { allowed = false }
+function checkAccess(url)
+    local dlstatus = require('moonloader').download_status
+    local path = getWorkingDirectory() .. "\\config\\access.json"
+
+    -- ?? удаляем старый файл
+    if doesFileExist(path) then
+        os.remove(path)
+    end
+
+    -- ?? скачиваем новый
+    downloadUrlToFile(url, path, function(id, status)
+        if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+
+            if not doesFileExist(path) then
+                sampAddChatMessage(tag.." Ошибка загрузки access!", -1)
+                return
+            end
+
+            local f = io.open(path, "r")
+            if not f then return end
+
+            local content = f:read("*a")
+            f:close()
+
+            -- фикс кодировки
+            content = encoding.UTF8:decode(content)
+
+            local data = decodeJson(content)
+
+            if not data or not data.users then
+                sampAddChatMessage(tag.." Ошибка JSON access!", -1)
+                return
+            end
+
+            local _, myId = sampGetPlayerIdByCharHandle(PLAYER_PED)
+            local nickname = sampGetPlayerNickname(myId)
+
+            Access.allowed = false
+
+            for _, name in ipairs(data.users) do
+                if name:lower() == nickname:lower() then
+                    Access.allowed = true
+                    break
+                end
+            end
+
+            if Access.allowed then
+                message("Доступ разрешён! Приятного пользования!")
+            else
+                warning_message('У вас нет доступа! Обратитесь к разработчику для внесения в базу!')
+                thisScript():unload()
+            end
+        end
+    end)
+end
+
 function main()
     while not isSampAvailable() do wait(0) end
 
@@ -990,6 +1053,7 @@ function main()
     end)
 
     sampRegisterChatCommand('checkbiz', startFinkaUpdate)
+    checkAccess("https://raw.githubusercontent.com/yarg0/FinkoVoz-For-Maf-/main/nickname.json?"..tostring(os.clock()))
 
     buildCoordCache()
     lua_thread.create(autoUpdateFinka)
@@ -1052,6 +1116,7 @@ local function isIgnored(id)
 end
 
 function drawFinkaOnScreen()
+    if not Access.allowed then return end
     if not settings.render then return end
 
     local px, py, pz = getCharCoordinates(PLAYER_PED)
