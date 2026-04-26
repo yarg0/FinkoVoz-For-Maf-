@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("1b")
+script_version("1.5b VK-version")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -10,6 +10,7 @@ local vkeys = require 'vkeys'
 local ffi = require('ffi')
 local encoding = require('encoding')
 local faicons = require('fAwesome6')
+local VK = require('VK_API')
 encoding.default = 'CP1251'
 local u8 = encoding.UTF8
 ---------------------------------------------------------------------------------------------------
@@ -23,17 +24,23 @@ local function message(text)
     end
     sampAddChatMessage(':u1f69b: '..tag..' '..text, base_color)
 end
-local function warning_message(text)
-    if not text or text == '' then
+local function notification_message(textnotif)
+    if not textnotif or textnotif == '' then
         return
     end
-    sampAddChatMessage(':u1f69b: {ff0000}[WARNING] {ffffff}'..tag..' '..text..' {ff0000}[WARNING]', base_color)
+    sampAddChatMessage(':u1f69b: {b1db1a}[УВЕДОМЛЕНИЕ] {ffffff}'..tag..' '..textnotif, base_color)
 end
-local function test_message(text)
-    if not text or text == '' then
+local function warning_message(text_warning)
+    if not text_warning or text_warning == '' then
         return
     end
-    sampAddChatMessage(':u1f69b: [DEBUG MESSAGE FinkoVozka]{ffffff} '..text, 0xff0000)
+    sampAddChatMessage(':u1f69b: {ff0000}[WARNING] {ffffff}'..tag..' '..text_warning..' {ff0000}[WARNING]', base_color)
+end
+local function test_message(text_test)
+    if not text_test or text_test == '' then
+        return
+    end
+    sampAddChatMessage(':u1f69b: [DEBUG MESSAGE FinkoVozka]{ffffff} '..text_test, 0xff0000)
 end
 
 -------------------------------------------- JSON SETTINGS ---------------------------------------
@@ -74,20 +81,21 @@ end
 
 local name_file = 'FinkoVozka.json'
 local settings = json(name_file):Load({
-    render = false,                 -- Рендер финки
-    render_circle = false,          -- Рендер кругов у бизнесов
-    second_window = false,          -- Окошко статистики mbiz
-    third_window = false,           -- Окошко баланса финковозки
+    render = false,                             -- Рендер финки
+    render_circle = false,                      -- Рендер кругов у бизнесов
+    second_window = false,                      -- Окошко статистики mbiz
+    third_window = false,                       -- Окошко баланса финковозки
+    four_window = false,                        -- Окошко ежедневной статистики
     Finka = {},
     moneyCar = 0,
     maxmoneyCar = 0,
     ignoreBizIds = {241,242,243,244,245,246,247,248},
     min_money = 0,
     max_dist_render = 1200,
-    autodelivery = false,           -- Автосдача финки
-    autobias = false,               -- Автовзятие финки
+    autodelivery = false,                       -- Автосдача финки
+    autobias = false,                           -- Автовзятие финки
     updateFinka = false,
-    AUOTFAETYTM = false,            -- Автообновление финки после каждого взятия денег | auto-update of the finca after each time you take money [AUOTFAETYTM]
+    AUOTFAETYTM = false,                        -- Автообновление финки после каждого взятия денег | auto-update of the finca after each time you take money [AUOTFAETYTM]
     AutoScreenTime = false,
     autoUpdateScript = false,
     font = 'Arial',
@@ -96,12 +104,126 @@ local settings = json(name_file):Load({
     version = '', checkversion = 0,
     ignoredialog_zagruzka = false,
     ignoredialog_razgruzka = false,
+    total_metod = false,                        -- Закрывает все диалоги перед обновлением mbiz
+    isdaf = false,                              -- Начал возить финку | I started driving a Finca
+
 })
 local function save_settings()
     json(name_file):Save(settings)
 end
 
 settings.Finka = settings.Finka or {}
+------------------------------------------ VKontakte ---------------------------------------------
+local token = 'vk1.a.9Gzj5w4GPnsh9SEexBq2v7dq883Q-7BY-EJQQmp6-94cqNWJDptTyvzR-5I_dy9-se_HQ1RBVMqTRKlyPrO9GBE6iBo2uUksIlxHgv5f_4-op6sK2NqeUoGQn8foRIV51004xIi-6VzQj3tFkHQuWkcLp2kqy4jHzIHHUQpzuiJdL8wCR8vp7uzWcFBmF6-1CFA4nNMDn0OtPilVmgFN9w'
+local group = '200312768'
+local chat = '2000000007' -- 2000000007
+local LOGS_PATH = getWorkingDirectory() .. "\\FinkoVoz\\logs\\"
+
+
+function parseDateRange(arg) -- Парсинг диапазона дат
+    if not arg then return nil, nil end
+
+    if arg == "today" then
+        local t = os.date("*t")
+        return os.time(t), os.time(t)
+    end
+
+    -- диапазон
+    local d1, d2 = arg:match("(%d+%-%d+%-%d+)%-(%d+%-%d+%-%d+)")
+    if d1 and d2 then
+        local t1 = parseDate(d1)
+        local t2 = parseDate(d2)
+        return t1, t2
+    end
+
+    -- одна дата
+    local t = parseDate(arg)
+    return t, t
+end
+function parseDate(str)
+    if not str then return nil end
+
+    local d, m, y = str:match("(%d+)%-(%d+)%-(%d+)")
+    d, m, y = tonumber(d), tonumber(m), tonumber(y)
+
+    if not d or not m or not y then
+        return nil
+    end
+
+    return os.time({
+        day = d,
+        month = m,
+        year = y,
+        hour = 0
+    })
+end
+function getDatesBetween(t1, t2) -- Получение списка дат
+    local dates = {}
+
+    for t = t1, t2, 86400 do -- шаг 1 день
+        table.insert(dates, os.date("%d-%m-%Y", t))
+    end
+
+    return dates
+end
+function vkSend(text, delay) -- Функция отправки с задержкой
+    VK.sendMessage(text, chat)
+    wait(delay or 500) -- по умолчанию 500 мс
+end
+function formatNick(nick) -- Чтобы имя и фамилия начинались с большой буквы
+    if not nick then return nil end
+
+    nick = u8:decode(nick)
+    nick = nick:lower()
+
+    local parts = {}
+    for part in nick:gmatch("[^_]+") do
+        part = part:gsub("(%a)([%w]*)", function(a, b)
+            return a:upper() .. b
+        end)
+        table.insert(parts, part)
+    end
+
+    return table.concat(parts, "_")
+end
+function VK.getMessage(v) -- Создаем callback функцию для получения сообщений
+    -->> Получаем текст сообщения
+    local text = u8:decode(v.object.message.text)
+    -->> Получаем Айди пользователя, который написал сообщение
+    local from_id = v.object.message.from_id
+    -->> Получаем Айди чата, в котором написано сообщение
+    local peer_id = v.object.message.peer_id
+
+    -- нормализация
+    text = text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+    handleVKCommand(text, from_id, peer_id)
+end
+local vk_commands = {}
+function VKCommand(cmd, func)
+    vk_commands[cmd] = func
+end
+function handleVKCommand(text, from_id, peer_id)
+    local args = {}
+
+    for word in text:gmatch("%S+") do
+        table.insert(args, word)
+    end
+
+    local cmd = args[1]
+    table.remove(args, 1)
+
+    if vk_commands[cmd] then
+        vk_commands[cmd](args, from_id, peer_id)
+    end
+end
+local onlinePlayers = {}
+function addPlayer()
+    local _, playerid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    local name = sampGetPlayerNickname(playerid)
+
+    onlinePlayers[name] = os.date("%H:%M:%S") -- время входа
+end
+------------------------------------------ Auto Update --------------------------------------------
 
 -- https://github.com/qrlk/moonloader-script-updater
 local enable_autoupdate = settings.autoUpdateScript -- false to disable auto-update + disable sending initial telemetry (server, moonloader version, script version, samp nickname, virtual volume serial number)
@@ -120,8 +242,11 @@ if enable_autoupdate then
 end
 --------------------------------------------------------------------------------------------------
 local update_log = {
-    '1. Добавил проверку на использование скрипта из БД',
-    '2. Иные минорные изменения'
+    '1. Добавлено взаимодействие с VK ботом (Бот ваши данные не собирает, он получает исключительно только вашу статистику перевозки финки)',
+    '2. Логирование перевозок финковозок за каждый день',
+    '3. Добавлен пункт "Логирование"',
+    '4. Добавлено новое меню "Статистика за день"',
+    '5. Чуть-чуть изменил обновление mbiz. Теперь вы можете включить/выключить убирание абсолютно любого диалога перед обновлением финки'
 }
 
 local coordbiz = {
@@ -595,6 +720,7 @@ local coordbiz = {
 }
 ---------------------------------------- LOCAL SETTINGS ------------------------------------------
 local checkmbiz = false
+local carseat = 0
 
 local render_fin = imgui.new.bool(settings.render)
 local render_cir = imgui.new.bool(settings.render_circle)
@@ -609,6 +735,8 @@ local autoUpdateScript = imgui.new.bool(settings.autoUpdateScript)
 local debugmessage_finka = imgui.new.bool(settings.debugmessage_finka)
 local ignoredialog_zagruzka = imgui.new.bool(settings.ignoredialog_zagruzka)
 local ignoredialog_razgruzka = imgui.new.bool(settings.ignoredialog_razgruzka)
+local total_metod = imgui.new.bool(settings.total_metod)
+local isdaf = imgui.new.bool(settings.isdaf)
 local addignorebiz = imgui.new.char[256]() -- добавить биз в игнор лист
 local clearignorebiz = imgui.new.char[256]() -- удалить биз из игнор листа
 local size_text = imgui.new.int(settings.size_Text)
@@ -617,6 +745,7 @@ local font = renderCreateFont(settings.font, settings.size_Text, font_flag.BORDE
 local renderWindow = imgui.new.bool(false)
 local secondWindow = imgui.new.bool(settings.second_window)
 local thirdWindow = imgui.new.bool(settings.third_window)
+local fourWindow = imgui.new.bool(settings.four_window)
 imgui.OnInitialize(function()
     imgui.GetIO().IniFilename = nil
     theme()
@@ -634,14 +763,18 @@ local relativeOffsetX2, relativeOffsetY2 = -940, -65
 local targetX2 = currentFirstX + relativeOffsetX2
 local targetY2 = currentFirstY + relativeOffsetY2
 
-local relativeOffsetX3, relativeOffsetY3 = 700, -300
+local relativeOffsetX3, relativeOffsetY3 = 700, -270
 local targetX3 = currentFirstX + relativeOffsetX3
 local targetY3 = currentFirstY + relativeOffsetY3
+
+local relativeOffsetX4, relativeOffsetY4 = -620, 394
+local targetX4 = currentFirstX + relativeOffsetX4
+local targetY4 = currentFirstY + relativeOffsetY4
 
 local newFrame = imgui.OnFrame(
     function() return renderWindow[0] end,
     function(player)
-        local sizeX, sizeY = 370, 400
+        local sizeX, sizeY = 445, 400
         imgui.SetNextWindowPos(imgui.ImVec2(currentFirstX, currentFirstY), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
         if imgui.Begin(faicons('truck')..' FinkoVozik '..faicons('truck'), renderWindow) then
@@ -695,6 +828,10 @@ local newFrame = imgui.OnFrame(
                         settings.third_window = thirdWindow[0]
                         save_settings()
                     end
+                    if imgui.Checkbox(faicons('bars').. u8' Статистика за день', fourWindow) then
+                        settings.four_window = fourWindow[0]
+                        save_settings()
+                    end
                     if imgui.Checkbox(faicons('book')..u8' Статистика mbiz', secondWindow) then
                         settings.second_window = secondWindow[0]
                         save_settings()
@@ -726,6 +863,7 @@ local newFrame = imgui.OnFrame(
                     
                     imgui.EndTabItem() -- конец вкладки
                 end
+                
                 if imgui.BeginTabItem(faicons('eye')..u8' Визуал рендера') then -- вторая вкладка
                     imgui.PushItemWidth(150)
                     local font = {
@@ -755,9 +893,21 @@ local newFrame = imgui.OnFrame(
                     imgui.PopItemWidth()
                     imgui.EndTabItem() -- конец вкладки
                 end
+                if imgui.BeginTabItem(faicons('font_awesome')..u8' Логирование') then -- первая вкладка
+                    if imgui.Checkbox(u8'Уведомлять в боте о начале перевозки финки', isdaf) then
+                        settings.isdaf = isdaf[0]
+                        save_settings()
+                    end
+                    
+                    imgui.EndTabItem() -- конец вкладки
+                end
                 if imgui.BeginTabItem(faicons('gears')..u8' Настройки') then -- вторая вкладка
                     if imgui.Checkbox(u8'Отладочное сообщение о бизнесах с mbiz', debugmessage_finka) then
                         settings.debugmessage_finka = debugmessage_finka[0]
+                        save_settings()
+                    end
+                    if imgui.Checkbox(u8'Закрывать все диалоги во время обновления mbiz', total_metod) then
+                        settings.total_metod = total_metod[0]
                         save_settings()
                     end
                     if imgui.Checkbox(u8'Скрыть диалог загрузки финки', ignoredialog_zagruzka) then
@@ -832,7 +982,7 @@ local newFrame = imgui.OnFrame(
         imgui.SetNextWindowSize(size, imgui.Cond.FirstUseEver)
         imgui.SetNextWindowPos(imgui.ImVec2(targetX2, targetY2), imgui.Cond.FirstUseEver)
         player.HideCursor = true
-        if imgui.Begin(u8'Статистика', secondWindow) then
+        if imgui.Begin(u8'Бизнесы фракции', secondWindow) then
 
             -- Заголовок таблицы
             -- Ширина колонок
@@ -931,7 +1081,6 @@ local newFrame = imgui.OnFrame(
         end
     end)
 
-
 local newFrame = imgui.OnFrame(
     function() return thirdWindow[0] end,
     function(player)
@@ -939,7 +1088,7 @@ local newFrame = imgui.OnFrame(
         imgui.SetNextWindowSize(size, imgui.Cond.FirstUseEver)
         imgui.SetNextWindowPos(imgui.ImVec2(targetX3, targetY3), imgui.Cond.FirstUseEver)
         player.HideCursor = true
-        if imgui.Begin(u8'111', thirdWindow, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoCollapse) then
+        if imgui.Begin(u8'##Прогресс финковозки', thirdWindow, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoCollapse) then
 
             local moneyCar = settings.moneyCar or 0
             local maxMoney = (settings.maxmoneyCar or 10) * 1000000
@@ -956,6 +1105,66 @@ local newFrame = imgui.OnFrame(
         end
     end)
 
+local newFrame = imgui.OnFrame(
+    function() return fourWindow[0] end,
+    function(player)
+        local size, res = imgui.ImVec2(250, 40), imgui.ImVec2(getScreenResolution())
+        imgui.SetNextWindowSize(size, imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowPos(imgui.ImVec2(targetX4, targetY4), imgui.Cond.FirstUseEver)
+        player.HideCursor = true
+        if imgui.Begin(u8'##Статистика за день', fourWindow, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoCollapse) then
+
+            if not doesDirectoryExist("FinkoVoz") then
+                createDirectory("FinkoVoz")
+            end
+
+            local date = os.date("%d-%m-%Y")
+            imgui.Text(u8('Статистика за сегодня (' .. date .. ')'))
+            local filename = "logs_" .. date .. ".json"
+            local path = getWorkingDirectory() .. "\\FinkoVoz\\logs\\" .. filename
+            local data = nil
+
+            if doesFileExist(path) then
+                local f = io.open(path, "r")
+                local content = f:read("*a")
+                f:close()
+
+                local ok, decoded = pcall(decodeJson, content)
+                if ok and type(decoded) == "table" then
+                    data = decoded
+                end
+            end
+
+            -- ?? ВАЖНО: ВСЕГДА РИСУЕМ UI
+
+            if not data or next(data) == nil then
+                imgui.Text(u8("Начните перевозить финку, чтобы увидеть статистику"))
+                return
+            end
+
+            local count = 0
+            for _ in pairs(data.logs) do
+                count = count + 1
+            end
+            imgui.Text(u8('Перевезено финковозок: ' .. count))
+            imgui.Text(u8('Максимальных финковозок: ' .. data.stats.fullfinkovozka))
+
+            local total = 0
+            for _, v in pairs(data.logs) do
+                local num = v.text
+                if num then
+                    total = total + tonumber(num)
+                    
+                end
+            end
+            imgui.Text(u8('Всего перевезено денег: ' .. formatNumberWithDots(total)..'$'))
+            local youmoney = math.floor(total * 0.55)
+            imgui.Text(u8('Из них заработано: ' .. formatNumberWithDots(youmoney)..'$'))
+
+            imgui.End()
+        end
+    end)
+
 function imgui.CenterColumnText(text)
     imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(text).x / 2)
     imgui.Text(text)
@@ -965,17 +1174,113 @@ function imgui.CenterText(text)
     imgui.Text(u8(text))
 end
 
+function create_logs_finka()
+
+    local dir = getGameDirectory() .. "\\moonloader\\FinkoVoz\\logs"
+
+    if not doesDirectoryExist(dir) then
+        createDirectory(dir)
+    end
+
+    local date = os.date("%d-%m-%Y")
+    local filename = "logs_" .. date .. ".json"
+    local path = dir .. "\\" .. filename
+
+    if doesFileExist(path) then
+        return
+    end
+
+    local file = io.open(path, "w")
+
+    if not file then
+        print("[ERROR] Не удалось создать файл: " .. path)
+        return
+    end
+
+    file:write(
+        "--Перевезенная финка за: " .. date .. "\n" ..
+        "--ВНИМАНИЕ Данные могут быть подделаны!\n"
+    )
+
+    file:close()
+end
+
+function logs_finka(arg, KK, K)
+
+    local _, playerid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    local name = sampGetPlayerNickname(playerid)
+
+    if not doesDirectoryExist("FinkoVoz") then
+        createDirectory("FinkoVoz")
+    end
+
+    local filename = "logs_" .. os.date("%d-%m-%Y") .. ".json"
+    local path = getWorkingDirectory() .. "\\FinkoVoz\\logs\\" .. filename
+
+    local data = {
+        stats = {
+            fullfinkovozka = 0
+        },
+        logs = {}
+    }
+
+    if doesFileExist(path) then
+        local f = io.open(path, "r")
+        local content = f:read("*a")
+        f:close()
+
+        local ok, decoded = pcall(decodeJson, content)
+
+        if ok and type(decoded) == "table" then
+            data = decoded
+        end
+    end
+
+    -- ?? ВАЖНО: защита от старых/битых файлов
+    if type(data.logs) ~= "table" then
+        data.logs = {}
+    end
+
+    if type(data.stats) ~= "table" then
+        data.stats = { fullfinkovozka = 0 }
+    end
+
+    -- проверка максималки
+    KK = tonumber(KK) or 0
+    K = tonumber(K) or 0
+
+    local isMax = (KK == 27 and K == 500000)
+
+    if isMax then
+        data.stats.fullfinkovozka = (data.stats.fullfinkovozka or 0) + 1
+    end
+
+    -- добавляем лог
+    local date = os.date("%H-%M-%S_") .. tostring(os.clock())
+
+    data.logs[date] = {
+        name = name,
+        text = arg,
+        full = isMax and 1 or 0
+    }
+
+    -- сохраняем
+    local file = io.open(path, "w")
+    file:write(encodeJson(data))
+    file:close()
+end
+
 local Access = { allowed = false }
 function checkAccess(url)
     local dlstatus = require('moonloader').download_status
     local path = getWorkingDirectory() .. "\\config\\access.json"
 
-    -- ?? удаляем старый файл
+    -- удаляем старый файл
     if doesFileExist(path) then
         os.remove(path)
     end
 
-    -- ?? скачиваем новый
+    -- скачиваем новый
     downloadUrlToFile(url, path, function(id, status)
         if status == dlstatus.STATUSEX_ENDDOWNLOAD then
 
@@ -1021,13 +1326,21 @@ function checkAccess(url)
         end
     end)
 end
-
 function main()
     while not isSampAvailable() do wait(0) end
 
     if autoupdate_loaded and enable_autoupdate and Update then
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
     end
+    checkAccess("https://raw.githubusercontent.com/yarg0/FinkoVoz-For-Maf-/main/nickname.json?"..tostring(os.clock()))
+
+    -- Авторизация
+    VK.botAuthorization(group, token, '5.131')
+    -- Запуск бота (получение сообщений)
+    VK.getLongPollServer(function ()
+        message("Вы подключены к VK боту!")
+        addPlayer()
+    end)
 
     if settings.version ~= thisScript().version then
         settings.version = thisScript().version
@@ -1036,7 +1349,7 @@ function main()
     end
 
     message('Скрипт загружен!')
-
+    
     sampRegisterChatCommand('finka', function()
         renderWindow[0] = not renderWindow[0]
     end)
@@ -1049,8 +1362,194 @@ function main()
         thisScript():unload()
     end)
 
+    sampRegisterChatCommand('finkareport', function(arg)
+        if not arg or arg == '' then
+            sampAddChatMessage('Введите: /finkareport [текст]', -1) 
+            return
+        end
+        local today = os.date("%d-%m-%Y %H:%M")
+        local _, playerid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+        local name = sampGetPlayerNickname(playerid)
+        --print('Sended in chat ['..peer_id..'], text: '..text)
+        VK.sendMessage(today .. ' Репорт от пользователя: ' .. name .. ' \nЕго содержание: ' .. arg, chat)
+    end)
+
     sampRegisterChatCommand('checkbiz', startFinkaUpdate)
-    checkAccess("https://raw.githubusercontent.com/yarg0/FinkoVoz-For-Maf-/main/nickname.json?"..tostring(os.clock()))
+
+    VKCommand("stats", function(args, from_id, peer_id)
+
+        lua_thread.create(function()
+
+            local target = args[1]
+            local daterange = args[2]
+
+            local normalNick = formatNick(target)
+
+            if not target then
+                vkSend("Пример: stats Nick 25-04-2026")
+                return
+            end
+
+            local t1, t2
+
+            if daterange then
+                t1, t2 = parseDateRange(daterange)
+            else
+                local today = os.date("%d-%m-%Y")
+                t1, t2 = parseDate(today), parseDate(today)
+            end
+
+            if not t1 or not t2 then
+                vkSend("Неверный формат даты")
+                return
+            end
+
+            local dates = getDatesBetween(t1, t2)
+
+            local total = 0
+            local count = 0
+            local maxCount = 0
+            local filesFound = 0
+
+            local dayStats = {}
+
+            for _, date in ipairs(dates) do
+
+                local path = LOGS_PATH .. "logs_" .. date .. ".json"
+
+                local dayCount = 0
+                local dayTotal = 0
+                local dayMax = 0
+
+                if doesFileExist(path) then
+                    filesFound = filesFound + 1
+                    hasAnyData = true
+
+                    local f = io.open(path, "r")
+                    local content = f:read("*a")
+                    f:close()
+
+                    local ok, data = pcall(decodeJson, content)
+
+                    if ok and type(data) == "table" then
+
+                        local logs = data.logs or {}
+
+                        for _, v in pairs(logs) do
+                            if v.name and v.name:lower() == target:lower() then
+
+                                dayCount = dayCount + 1
+
+                                local num = tonumber(v.text) or 0
+                                dayTotal = dayTotal + num
+
+                                if v.full == 1 then
+                                    dayMax = dayMax + 1
+                                    maxCount = maxCount + 1
+                                end
+                            end
+                        end
+                    end
+                end
+
+                dayStats[date] = {
+                    count = dayCount,
+                    total = dayTotal,
+                    max = dayMax
+                }
+
+                count = count + dayCount
+                total = total + dayTotal
+            end
+
+            if filesFound == 0 then
+                vkSend("За этот период логов нет")
+                return
+            end
+
+            if count == 0 then
+                vkSend("Игрок " .. normalNick .. " не возил финку")
+            end
+
+            -- ОБЩАЯ СТАТА
+            vkSend("Статистика: " .. normalNick .. 
+            "\nПериод: " .. (daterange or "сегодня") .. 
+            "\nПеревозок: " .. count .. 
+            "\nМаксимальных финковозок: " .. maxCount .. 
+            "\nДенег: " .. formatNumberWithDots(total) .. '$' .. 
+            "\nЗаработок: " .. formatNumberWithDots(math.floor(total * 0.55)) .. '$')
+            --vkSend("Период: " .. (daterange or "сегодня"))
+            --vkSend("Перевозок: " .. count)
+            --vkSend("Максимальных финковозок: " .. maxCount)
+            --vkSend("Денег: " .. formatNumberWithDots(total) .. '$')
+            --vkSend("Заработок: " .. formatNumberWithDots(math.floor(total * 0.55)) .. '$')
+
+            wait(50)
+
+            vkSend("По дням:")
+
+            local sorted = {}
+
+            for date, info in pairs(dayStats) do
+                table.insert(sorted, {
+                    date = date,
+                    count = info.count,
+                    total = info.total,
+                    max = info.max
+                })
+            end
+
+            table.sort(sorted, function(a, b)
+                return parseDate(a.date) < parseDate(b.date)
+            end)
+
+            for _, v in ipairs(sorted) do
+                if v.count == 0 then
+                    vkSend(v.date .. " — не возил финку")
+                else
+                    vkSend(
+                        v.date ..
+                        " — " .. v.count ..
+                        " всего | Максимальных: " .. v.max ..
+                        " | $" .. formatNumberWithDots(v.total)
+                    )
+                end
+            end
+
+        end)
+    end)
+
+    VKCommand("notif", function(args, from_id, peer_id)
+        local today = os.date("%d-%m-%Y %H:%M")
+        
+        if not args or not args[1] then
+            VK.sendMessage(today .. ' Впишите, какое уведомление хотите написать!', chat)
+            return
+        end
+        local text = table.concat(args, " ")
+
+        notification_message(text)
+        VK.sendMessage('Отправил данное сообщение всем кто сейчас пользуется скриптом', chat)
+    end)
+
+    VKCommand("online", function(args, from_id, peer_id)
+
+        local count = 0
+        local list = ""
+
+        for name, time in pairs(onlinePlayers) do
+            count = count + 1
+            list = list .. "\n• " .. name .. " (с " .. time .. ")"
+        end
+
+        if count == 0 then
+            VK.sendMessage("Сейчас никто не использует скрипт", chat)
+            return
+        end
+
+        VK.sendMessage("Сейчас в сети (" .. count .. "):" .. list, chat)
+
+    end)
 
     buildCoordCache()
     lua_thread.create(autoUpdateFinka)
@@ -1060,8 +1559,35 @@ function main()
         if settings.render then
             drawFinkaOnScreen()
         end
+
+        if settings.isdaf then
+            if isCharInAnyCar(PLAYER_PED) and carseat == 0 then -- Проверка на транспорт
+                carseat = 1
+                local carhandle = storeCarCharIsInNoSave(PLAYER_PED) -- Получения handle транспорта
+                local idcar = getCarModel(carhandle) -- Получение ID транспорта
+                if settings.debugmessage_finka then
+                    test_message('Вы сели в авто с ID: ' .. idcar) -- Выводим ID транспорта в консоль Sampfuncs.
+                end
+                if idcar == 498 then
+                    local today = os.date("%d-%m-%Y %H:%M")
+                    local _, playerid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+                    local name = sampGetPlayerNickname(playerid)
+                    --print('Sended in chat ['..peer_id..'], text: '..text)
+                    VK.sendMessage(today .. ' Пользователь: ' .. name .. ' сел в финковозку', chat)
+                end
+            elseif not isCharInAnyCar(PLAYER_PED) and carseat == 1 then
+                carseat = 0
+            end
+        end
         
     end
+end
+
+function onScriptTerminate()
+    local _, playerid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    local name = sampGetPlayerNickname(playerid)
+
+    onlinePlayers[name] = nil
 end
 
 function autoUpdateFinka()
@@ -1293,7 +1819,9 @@ function startFinkaUpdate()
 
     -- если завис — сбрасываем
     if FinkaUpdater.active then
-        test_message("Обнаружен зависший апдейт, сброс...")
+        if settings.debugmessage_finka then
+            test_message("Обнаружен зависший апдейт, сброс...")
+        end
         FinkaUpdater.active = false
     end
 
@@ -1311,8 +1839,10 @@ function startFinkaUpdate()
     lua_thread.create(function()
         wait(7000)
 
-        if settings.debugmessage_finka and FinkaUpdater.active and mySession == FinkaUpdater.session then
-            test_message("Таймаут обновления финки — сброс")
+        if FinkaUpdater.active and mySession == FinkaUpdater.session then
+            if settings.debugmessage_finka then
+                test_message("Таймаут обновления финки — сброс")
+            end
             FinkaUpdater.active = false
             checkmbiz = false
         end
@@ -1390,7 +1920,9 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
     end
 
     if checkmbiz and FinkaUpdater.active then
-        sampCloseCurrentDialogWithButton(0)
+        if settings.total_metod then
+            sampCloseCurrentDialogWithButton(0)
+        end
         if tit:match('Бизнесов под крышей') then
 
             local mySession = FinkaUpdater.session
@@ -1508,6 +2040,63 @@ function ev.onServerMessage(color, text)
             settings.moneyCar = 0
             save_settings()
         end
+    end
+
+    local KK, K = text:match('%[Информация%] {FFFFFF}За доставку денег в общак организации вы получили {E1B72C}:KK: (%d+) :K: ([%d%.]+){FFFFFF} %(55 процентов от доставленной суммы%)')
+    if not KK then
+        K = text:match("%[Информация%] {FFFFFF}За доставку денег в общак организации вы получили :K: ([%d%.]+){FFFFFF} %(55 процентов от доставленной суммы%)")
+        KK = '0'
+    end
+    if not K then
+        KK = text:match("%[Информация%] {FFFFFF}За доставку денег в общак организации вы получили {E1B72C}:KK: (%d+){FFFFFF} %(55 процентов от доставленной суммы%)")
+        K = '0'
+    end
+    if KK and K then
+        local fullmoney = KK * 1000000 + K * 1000
+        local full = math.floor(fullmoney / 55 * 100)
+        sampAddChatMessage(full, -1)
+        K = K:gsub("%.", "") -- убирает точки
+        logs_finka(full, KK, K)
+    end
+
+    local _, playerid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    local name = sampGetPlayerNickname(playerid)
+    --%[Информация%] {FFFFFF}За доставку денег в общак организации вы получили {E1B72C}:KK: 27 :K: 500.000{FFFFFF} %(55 процентов от доставленной суммы%)
+    if text:match("%[Информация%] {FFFFFF}За доставку денег в общак организации вы получили {E1B72C}:KK: 27 :K: 500.000{FFFFFF} %(55 процентов от доставленной суммы%)") then
+        lua_thread.create(function ()
+            
+            wait(500)
+            local date = os.date("%d-%m-%Y")
+            local date_ = os.date("%d-%m-%Y-%H-%M")
+            local filename = "logs_" .. date .. ".json"
+            local path = getWorkingDirectory() .. "\\FinkoVoz\\logs\\" .. filename
+            local data = nil
+
+            if doesFileExist(path) then
+                local f = io.open(path, "r")
+                local content = f:read("*a")
+                f:close()
+
+                local ok, decoded = pcall(decodeJson, content)
+                if ok and type(decoded) == "table" then
+                    data = decoded
+                end
+            end
+
+            if not data or next(data) == nil then
+                return
+            end
+
+            local count = 0
+            for _ in pairs(data.logs) do
+                count = count + 1
+            end
+
+            local fullfinkovozok = data.stats.fullfinkovozka or 0
+
+            VK.sendMessage(date_ .. ' Пользователь: ' .. name .. ' привез фулл финковозку\nКол-во финковозок за сегодня: ' .. count .. ' | Максимальных финковозок: ' .. fullfinkovozok, chat)
+
+        end)
     end
 
 end
