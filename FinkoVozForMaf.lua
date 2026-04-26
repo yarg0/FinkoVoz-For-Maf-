@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.5.0.2b")
+script_version("1.5.0.3b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -1182,27 +1182,6 @@ function create_logs_finka()
         createDirectory(dir)
     end
 
-    local date = os.date("%d-%m-%Y")
-    local filename = "logs_" .. date .. ".json"
-    local path = dir .. "\\" .. filename
-
-    if doesFileExist(path) then
-        return
-    end
-
-    local file = io.open(path, "w")
-
-    if not file then
-        print("[ERROR] Не удалось создать файл: " .. path)
-        return
-    end
-
-    file:write(
-        "--Перевезенная финка за: " .. date .. "\n" ..
-        "--ВНИМАНИЕ Данные могут быть подделаны!\n"
-    )
-
-    file:close()
 end
 
 function logs_finka(arg, KK, K)
@@ -1356,7 +1335,7 @@ function main()
     end
 
     message('Скрипт загружен!')
-    
+    create_logs_finka()
     sampRegisterChatCommand('finka', function()
         renderWindow[0] = not renderWindow[0]
     end)
