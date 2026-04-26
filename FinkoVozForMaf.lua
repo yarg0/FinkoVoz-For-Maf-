@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.5.0.1b")
+script_version("1.5.0.2b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -1209,13 +1209,10 @@ function logs_finka(arg, KK, K)
 
     local _, playerid = sampGetPlayerIdByCharHandle(PLAYER_PED)
     local name = sampGetPlayerNickname(playerid)
+    local dir = getGameDirectory() .. "\\moonloader\\FinkoVoz\\logs"
 
-    if not doesDirectoryExist("FinkoVoz") then
-        createDirectory("FinkoVoz")
-    end
-
-    if not doesDirectoryExist("FinkoVoz\\logs") then
-        createDirectory("FinkoVoz\\logs")
+    if not doesDirectoryExist(dir) then
+        createDirectory(dir)
     end
 
     local filename = "logs_" .. os.date("%d-%m-%Y") .. ".json"
