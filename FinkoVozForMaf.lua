@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.5b VK-version")
+script_version("1.5.0.1b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -1214,6 +1214,10 @@ function logs_finka(arg, KK, K)
         createDirectory("FinkoVoz")
     end
 
+    if not doesDirectoryExist("FinkoVoz\\logs") then
+        createDirectory("FinkoVoz\\logs")
+    end
+
     local filename = "logs_" .. os.date("%d-%m-%Y") .. ".json"
     local path = getWorkingDirectory() .. "\\FinkoVoz\\logs\\" .. filename
 
@@ -1236,7 +1240,7 @@ function logs_finka(arg, KK, K)
         end
     end
 
-    -- ?? ВАЖНО: защита от старых/битых файлов
+    -- ВАЖНО: защита от старых/битых файлов
     if type(data.logs) ~= "table" then
         data.logs = {}
     end
@@ -1266,6 +1270,12 @@ function logs_finka(arg, KK, K)
 
     -- сохраняем
     local file = io.open(path, "w")
+
+    if not file then
+        warning_message("[ERROR] Не удалось открыть файл: " .. path)
+        return
+    end
+
     file:write(encodeJson(data))
     file:close()
 end
@@ -1521,6 +1531,8 @@ function main()
 
     VKCommand("notif", function(args, from_id, peer_id)
         local today = os.date("%d-%m-%Y %H:%M")
+        local _, playerid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+        local name = sampGetPlayerNickname(playerid)
         
         if not args or not args[1] then
             VK.sendMessage(today .. ' Впишите, какое уведомление хотите написать!', chat)
@@ -1529,7 +1541,7 @@ function main()
         local text = table.concat(args, " ")
 
         notification_message(text)
-        VK.sendMessage('Отправил данное сообщение всем кто сейчас пользуется скриптом', chat)
+        VK.sendMessage('Отправил данное сообщение ' .. name, chat)
     end)
 
     VKCommand("online", function(args, from_id, peer_id)
