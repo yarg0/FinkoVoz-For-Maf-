@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.0.1b")
+script_version("1.0.2b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -121,7 +121,8 @@ if enable_autoupdate then
 end
 --------------------------------------------------------------------------------------------------
 local update_log = {
-    '1. Добавил возможность включить/выключить закрытие всех диалогов перед обновлением mbiz'
+    '1. Удалил автопроверку на ник',
+    '2. Изменил цвет расстояния до бизнеса в рендере'
 }
 
 local coordbiz = {
@@ -615,9 +616,11 @@ local clearignorebiz = imgui.new.char[256]() -- удалить биз из игнор листа
 local size_text = imgui.new.int(settings.size_Text)
 local font = renderCreateFont(settings.font, settings.size_Text, font_flag.BORDER)  -- шрифт
 
+
 local renderWindow = imgui.new.bool(false)
 local secondWindow = imgui.new.bool(settings.second_window)
 local thirdWindow = imgui.new.bool(settings.third_window)
+--------------------------------------------------------------------------------------------------
 imgui.OnInitialize(function()
     imgui.GetIO().IniFilename = nil
     theme()
@@ -936,7 +939,6 @@ local newFrame = imgui.OnFrame(
         end
     end)
 
-
 local newFrame = imgui.OnFrame(
     function() return thirdWindow[0] end,
     function(player)
@@ -1055,7 +1057,7 @@ function main()
     end)
 
     sampRegisterChatCommand('checkbiz', startFinkaUpdate)
-    checkAccess("https://raw.githubusercontent.com/yarg0/FinkoVoz-For-Maf-/main/nickname.json?"..tostring(os.clock()))
+    --checkAccess("https://raw.githubusercontent.com/yarg0/FinkoVoz-For-Maf-/main/nickname.json?"..tostring(os.clock()))
 
     buildCoordCache()
     lua_thread.create(autoUpdateFinka)
@@ -1118,7 +1120,6 @@ local function isIgnored(id)
 end
 
 function drawFinkaOnScreen()
-    if not Access.allowed then return end
     if not settings.render then return end
 
     local px, py, pz = getCharCoordinates(PLAYER_PED)
@@ -1181,7 +1182,7 @@ function drawFinkaOnScreen()
 
                         renderFontDrawTextAlign(
                             font,
-                            string.format('%.0f м | {20E10E}%s', dist, formatNumberWithDots(money)),
+                            string.format('{e6b24c}%.0f м {ffffff}| {20E10E}%s', dist, formatNumberWithDots(money)),
                             sx, sy + 20,
                             0xFFFFFFFF,
                             2
