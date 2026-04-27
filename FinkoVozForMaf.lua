@@ -1,5 +1,5 @@
-script_name("{e6953e}FinkoVozik {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.0.2b")
+script_name("{e6953e}FinkoVozka for Mafia {ffffff}by yargoff [Mercenari Fam]")
+script_version("1.0.3b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -14,7 +14,7 @@ encoding.default = 'CP1251'
 local u8 = encoding.UTF8
 ---------------------------------------------------------------------------------------------------
 
-local tag = '{c99732}[FinkoVozka]{ffffff}'
+local tag = '{c99732}[FinkoVozka Mafia]{ffffff}'
 local base_color = 0xFFe69f35
 
 local function message(text)
@@ -27,13 +27,13 @@ local function warning_message(text)
     if not text or text == '' then
         return
     end
-    sampAddChatMessage(':u1f69b: {ff0000}[WARNING] {ffffff}'..tag..' '..text..' {ff0000}[WARNING]', base_color)
+    sampAddChatMessage(':u1f69b: {ff0000}[WARNING] ' .. tag .. ' ' .. text, base_color)
 end
 local function test_message(text)
     if not text or text == '' then
         return
     end
-    sampAddChatMessage(':u1f69b: [DEBUG MESSAGE FinkoVozka]{ffffff} '..text, 0xff0000)
+    sampAddChatMessage(':u1f69b: {ff0000}[DEBUG MESSAGE] ' .. tag .. ' ' .. text, 0xff0000)
 end
 
 -------------------------------------------- JSON SETTINGS ---------------------------------------
@@ -121,8 +121,8 @@ if enable_autoupdate then
 end
 --------------------------------------------------------------------------------------------------
 local update_log = {
-    '1. Удалил автопроверку на ник',
-    '2. Изменил цвет расстояния до бизнеса в рендере'
+    '1. Удалил лишний / не нужный код. Подправил там и сям.',
+    
 }
 
 local coordbiz = {
@@ -616,7 +616,6 @@ local clearignorebiz = imgui.new.char[256]() -- удалить биз из игнор листа
 local size_text = imgui.new.int(settings.size_Text)
 local font = renderCreateFont(settings.font, settings.size_Text, font_flag.BORDER)  -- шрифт
 
-
 local renderWindow = imgui.new.bool(false)
 local secondWindow = imgui.new.bool(settings.second_window)
 local thirdWindow = imgui.new.bool(settings.third_window)
@@ -972,63 +971,6 @@ function imgui.CenterText(text)
     imgui.Text(u8(text))
 end
 
-local Access = { allowed = false }
-function checkAccess(url)
-    local dlstatus = require('moonloader').download_status
-    local path = getWorkingDirectory() .. "\\config\\access.json"
-
-    -- ?? удаляем старый файл
-    if doesFileExist(path) then
-        os.remove(path)
-    end
-
-    -- ?? скачиваем новый
-    downloadUrlToFile(url, path, function(id, status)
-        if status == dlstatus.STATUSEX_ENDDOWNLOAD then
-
-            if not doesFileExist(path) then
-                sampAddChatMessage(tag.." Ошибка загрузки access!", -1)
-                return
-            end
-
-            local f = io.open(path, "r")
-            if not f then return end
-
-            local content = f:read("*a")
-            f:close()
-
-            -- фикс кодировки
-            content = encoding.UTF8:decode(content)
-
-            local data = decodeJson(content)
-
-            if not data or not data.users then
-                sampAddChatMessage(tag.." Ошибка JSON access!", -1)
-                return
-            end
-
-            local _, myId = sampGetPlayerIdByCharHandle(PLAYER_PED)
-            local nickname = sampGetPlayerNickname(myId)
-
-            Access.allowed = false
-
-            for _, name in ipairs(data.users) do
-                if name:lower() == nickname:lower() then
-                    Access.allowed = true
-                    break
-                end
-            end
-
-            if Access.allowed then
-                message("Доступ разрешён! Приятного пользования!")
-            else
-                warning_message('У вас нет доступа! Обратитесь к разработчику для внесения в базу!')
-                thisScript():unload()
-            end
-        end
-    end)
-end
-
 function main()
     while not isSampAvailable() do wait(0) end
 
@@ -1057,7 +999,6 @@ function main()
     end)
 
     sampRegisterChatCommand('checkbiz', startFinkaUpdate)
-    --checkAccess("https://raw.githubusercontent.com/yarg0/FinkoVoz-For-Maf-/main/nickname.json?"..tostring(os.clock()))
 
     buildCoordCache()
     lua_thread.create(autoUpdateFinka)
@@ -1195,90 +1136,6 @@ function drawFinkaOnScreen()
         ::continue::
     end
 end
-
---[[
-РЕНДЕР VER 1
-
-function drawFinkaOnScreen()
-    if not settings.render then return end
-
-    local px, py, pz = getCharCoordinates(PLAYER_PED)
-    if not px then return end
-
-    local minMoney = settings.min_money or 0
-    local maxDist = settings.max_dist_render or 200
-
-    for _, biz in ipairs(settings.Finka) do
-        -- ?? Считаем деньги
-        local money = ((tonumber(biz.finkaKK) or 0) * 1000000) + ((tonumber(biz.finkaK) or 0) * 1000)
-
-        if money < minMoney then goto continue end
-
-        -- ?? Получаем координаты бизнеса
-        local index = tonumber(biz.idbiz)
-        if not index then goto continue end
-
-        coordById = {}
-
-        for _, v in ipairs(coordbiz) do
-            coordById[tostring(v[4])] = {
-                x = v[1],
-                y = v[2],
-                z = v[3]
-            }
-        end
-
-        local coord = coordById[tostring(biz.idbiz)]
-        if not coord then goto continue end
-
-        local bx, by, bz = coord.x, coord.y, coord.z
-
-        -- ?? Дистанция
-        local dx = bx - px
-        local dy = by - py
-        local dz = bz - pz
-        local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-
-        if dist > maxDist then goto continue end
-
-        -- ?? Перевод в экран
-        local ok, sx, sy = convert3DCoordsToScreenEx(bx, by, bz, true, true)
-        if not ok then goto continue end
-
-        -- ?? Цвет по деньгам
-        local color = 0xFFFF0000
-        if money > 200000 then color = 0xFFFFFF00 end
-        if money > 800000 then color = 0xFF00FF00 end
-
-        -- ?? Круг
-        if settings.render_circle and dist < 200 then
-            Draw3DCircle(bx, by, bz - 2, 12, color, 2.5, 40)
-        end
-
-        -- ?? Формат денег
-        local formattedMoney = formatNumberWithDots(money)
-
-        -- ?? Текст
-        renderFontDrawTextAlign(
-            font,
-            ('[{ff0000}%s{ffffff}] %s'):format(biz.idbiz, biz.name_biz),
-            sx, sy,
-            0xFFFFFFFF,
-            2
-        )
-
-        renderFontDrawTextAlign(
-            font,
-            string.format('%.0f м | {20E10E}%s', dist, formattedMoney),
-            sx, sy + 20,
-            0xFFFFFFFF,
-            2
-        )
-
-        ::continue::
-    end
-end
-]]
 
 local FinkaUpdater = {
     active = false,
@@ -1778,72 +1635,6 @@ function honk()
     freeMemory(data)
 end
 
-function sendClickKeySync(key)
-    local data = allocateMemory(68)
-    local _, myId = sampGetPlayerIdByCharHandle(PLAYER_PED)
-    sampStorePlayerOnfootData(myId, data)
-
-    local weaponId = getCurrentCharWeapon(PLAYER_PED)
-    setStructElement(data, 36, 1, weaponId + tonumber(key), true)
-    sampSendOnfootData(data)
-    freeMemory(data)
-end
-
-function samp_create_sync_data(sync_type, copy_from_player)
-    local ffi = require 'ffi'
-    local sampfuncs = require 'sampfuncs'
-    -- from SAMP.Lua
-    local raknet = require 'samp.raknet'
-    require 'samp.synchronization'
-
-    copy_from_player = copy_from_player or true
-    local sync_traits = {
-        player = {'PlayerSyncData', raknet.PACKET.PLAYER_SYNC, sampStorePlayerOnfootData},
-        vehicle = {'VehicleSyncData', raknet.PACKET.VEHICLE_SYNC, sampStorePlayerIncarData},
-        passenger = {'PassengerSyncData', raknet.PACKET.PASSENGER_SYNC, sampStorePlayerPassengerData},
-        aim = {'AimSyncData', raknet.PACKET.AIM_SYNC, sampStorePlayerAimData},
-        trailer = {'TrailerSyncData', raknet.PACKET.TRAILER_SYNC, sampStorePlayerTrailerData},
-        unoccupied = {'UnoccupiedSyncData', raknet.PACKET.UNOCCUPIED_SYNC, nil},
-        bullet = {'BulletSyncData', raknet.PACKET.BULLET_SYNC, nil},
-        spectator = {'SpectatorSyncData', raknet.PACKET.SPECTATOR_SYNC, nil}
-    }
-    local sync_info = sync_traits[sync_type]
-    local data_type = 'struct ' .. sync_info[1]
-    local data = ffi.new(data_type, {})
-    local raw_data_ptr = tonumber(ffi.cast('uintptr_t', ffi.new(data_type .. '*', data)))
-    -- copy player's sync data to the allocated memory
-    if copy_from_player then
-        local copy_func = sync_info[3]
-        if copy_func then
-            local _, player_id
-            if copy_from_player == true then
-                _, player_id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-            else
-                player_id = tonumber(copy_from_player)
-            end
-            copy_func(player_id, raw_data_ptr)
-        end
-    end
-    -- function to send packet
-    local func_send = function()
-        local bs = raknetNewBitStream()
-        raknetBitStreamWriteInt8(bs, sync_info[2])
-        raknetBitStreamWriteBuffer(bs, raw_data_ptr, ffi.sizeof(data))
-        raknetSendBitStreamEx(bs, sampfuncs.HIGH_PRIORITY, sampfuncs.UNRELIABLE_SEQUENCED, 1)
-        raknetDeleteBitStream(bs)
-    end
-    -- metatable to access sync data and 'send' function
-    local mt = {
-        __index = function(t, index)
-            return data[index]
-        end,
-        __newindex = function(t, index, value)
-            data[index] = value
-        end
-    }
-    return setmetatable({send = func_send}, mt)
-end
-
 function theme() -- Стиль mimgui
     imgui.SwitchContext()
     local style = imgui.GetStyle()
@@ -1910,6 +1701,90 @@ function theme() -- Стиль mimgui
     colors[clr.TextSelectedBg]         = ImVec4(1.00, 0.32, 0.32, 1.00);
     colors[clr.ModalWindowDimBg]   = ImVec4(0.26, 0.26, 0.26, 0.60);
 end
+
+--[[
+РЕНДЕР VER 1
+
+function drawFinkaOnScreen()
+    if not settings.render then return end
+
+    local px, py, pz = getCharCoordinates(PLAYER_PED)
+    if not px then return end
+
+    local minMoney = settings.min_money or 0
+    local maxDist = settings.max_dist_render or 200
+
+    for _, biz in ipairs(settings.Finka) do
+        -- ?? Считаем деньги
+        local money = ((tonumber(biz.finkaKK) or 0) * 1000000) + ((tonumber(biz.finkaK) or 0) * 1000)
+
+        if money < minMoney then goto continue end
+
+        -- ?? Получаем координаты бизнеса
+        local index = tonumber(biz.idbiz)
+        if not index then goto continue end
+
+        coordById = {}
+
+        for _, v in ipairs(coordbiz) do
+            coordById[tostring(v[4])] = {
+                x = v[1],
+                y = v[2],
+                z = v[3]
+            }
+        end
+
+        local coord = coordById[tostring(biz.idbiz)]
+        if not coord then goto continue end
+
+        local bx, by, bz = coord.x, coord.y, coord.z
+
+        -- ?? Дистанция
+        local dx = bx - px
+        local dy = by - py
+        local dz = bz - pz
+        local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+        if dist > maxDist then goto continue end
+
+        -- ?? Перевод в экран
+        local ok, sx, sy = convert3DCoordsToScreenEx(bx, by, bz, true, true)
+        if not ok then goto continue end
+
+        -- ?? Цвет по деньгам
+        local color = 0xFFFF0000
+        if money > 200000 then color = 0xFFFFFF00 end
+        if money > 800000 then color = 0xFF00FF00 end
+
+        -- ?? Круг
+        if settings.render_circle and dist < 200 then
+            Draw3DCircle(bx, by, bz - 2, 12, color, 2.5, 40)
+        end
+
+        -- ?? Формат денег
+        local formattedMoney = formatNumberWithDots(money)
+
+        -- ?? Текст
+        renderFontDrawTextAlign(
+            font,
+            ('[{ff0000}%s{ffffff}] %s'):format(biz.idbiz, biz.name_biz),
+            sx, sy,
+            0xFFFFFFFF,
+            2
+        )
+
+        renderFontDrawTextAlign(
+            font,
+            string.format('%.0f м | {20E10E}%s', dist, formattedMoney),
+            sx, sy + 20,
+            0xFFFFFFFF,
+            2
+        )
+
+        ::continue::
+    end
+end
+]]
 
 --[[
 local FinkaUpdater = {
