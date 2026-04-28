@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozka for Mafia {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.0.4b")
+script_version("1.0.5b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -121,7 +121,7 @@ if enable_autoupdate then
 end
 --------------------------------------------------------------------------------------------------
 local update_log = {
-    '1. Подправил автообновление mbiz',
+    '1. Там и сям исправил код',
     
 }
 
@@ -1198,7 +1198,7 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                 k, maxmoneyCar = value:match(":K: ([%d%.]+)/:KK: (%d+).")
                 kk = '0'
                 if settings.debugmessage_finka then
-                    test_message(' Если нету :KKV:, то :KK: - ' .. kk.. ' | :K: - '..k)
+                    test_message(' Если нету :KKV:, то :KK: - ' .. tostring(kk) .. ' | :K: - ' .. tostring(k))
                 end
             end
 
@@ -1211,11 +1211,17 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                 end
             end
 
+            kk = kk or '0'
+            k = k or '0'
+            maxmoneyCar = maxmoneyCar or '0'
+
             if kk and k then
-                local money = tonumber(kk) * 1000000 + tonumber((k:gsub('%.', '')))
+
+                local cleanK = k:gsub('%.', '')
+                local money = tonumber(kk) * 1000000 + tonumber(cleanK)
+
                 if settings.debugmessage_finka then
                     test_message('Денег в финковозке: ' .. formatNumberWithDots(money))
-                    --test_message('Денег с :K: - ' .. (k:gsub('%.', '')))
                     test_message(' :KK: - ' .. kk.. ' | :K: - '..k)
                 end
 
