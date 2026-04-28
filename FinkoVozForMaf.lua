@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozka for Mafia {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.0.3b")
+script_version("1.0.4b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -121,7 +121,7 @@ if enable_autoupdate then
 end
 --------------------------------------------------------------------------------------------------
 local update_log = {
-    '1. Удалил лишний / не нужный код. Подправил там и сям.',
+    '1. Подправил автообновление mbiz',
     
 }
 
@@ -1156,7 +1156,9 @@ function startFinkaUpdate()
 
     -- если завис — сбрасываем
     if FinkaUpdater.active then
-        test_message("Обнаружен зависший апдейт, сброс...")
+        if settings.debugmessage_finka then
+            test_message("Обнаружен зависший апдейт, сброс...")
+        end
         FinkaUpdater.active = false
     end
 
@@ -1174,8 +1176,10 @@ function startFinkaUpdate()
     lua_thread.create(function()
         wait(7000)
 
-        if settings.debugmessage_finka and FinkaUpdater.active and mySession == FinkaUpdater.session then
-            test_message("Таймаут обновления финки — сброс")
+        if FinkaUpdater.active and mySession == FinkaUpdater.session then
+            if settings.debugmessage_finka then
+                test_message("Таймаут обновления финки — сброс")
+            end
             FinkaUpdater.active = false
             checkmbiz = false
         end
