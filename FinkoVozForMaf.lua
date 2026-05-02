@@ -1,5 +1,5 @@
 script_name("{e6953e}FinkoVozka for Mafia {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.0.5b")
+script_version("1.0.6b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -121,8 +121,8 @@ if enable_autoupdate then
 end
 --------------------------------------------------------------------------------------------------
 local update_log = {
-    '1. Там и сям исправил код',
-    
+    '1. Фикс лоховских бизнесов у которых нету финки',
+
 }
 
 local coordbiz = {
@@ -447,7 +447,7 @@ local coordbiz = {
 {776.73101806641,1871.3599853516,4.9063000679016,"320"},
 {-2412.9099121094,350.0830078125,35.171901702881,"321"},
 {995.88201904297,-1156.4699707031,23.862499237061,"322"},
-{2489.2399902344,2123.5900878906,10.820300102234,"323"},
+{2489,2123,11,"323"}, --2489 2123 10
 {-1354.0999755859,2057.6398925781,53.117198944092,"324"},
 {-2057.4399414063,-2464.4799804688,31.17970085144,"325"},
 {1566.8299560547,23.298900604248,24.164100646973,"326"},
@@ -640,6 +640,12 @@ local targetY2 = currentFirstY + relativeOffsetY2
 local relativeOffsetX3, relativeOffsetY3 = 700, -300
 local targetX3 = currentFirstX + relativeOffsetX3
 local targetY3 = currentFirstY + relativeOffsetY3
+
+function textimgui()
+    
+    imgui.Text(u8'Хахаха')
+
+end
 
 local newFrame = imgui.OnFrame(
     function() return renderWindow[0] end,
@@ -1298,11 +1304,11 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
             -- парсинг бизнесов
             for line in text:gmatch("[^\r\n]+") do
                 local name_biz, idbiz, name_player, finkaKK, finkaK =
-                    line:match("{C0C0C0}%[%d+%] {FFFFFF}(.+)%((%d+)%)	{FFFFFF}(.+_.+)	{96E54C}:KK: (%d+) :K: (%d+%.%d+)	{96E54C}:KK: %d+ :K: %d+.%d+")
+                    line:match("{C0C0C0}%[%d+%] {FFFFFF}(.+)%((%d+)%)	{FFFFFF}(.+_.+)	{96E54C}:KK: (%d+) :K: (%d+%.%d+)	.+")
 
-                if not name_biz then
+                if not finkaKK then
                     name_biz, idbiz, name_player, finkaK =
-                        line:match("{C0C0C0}%[%d+%] {FFFFFF}(.+)%((%d+)%)	{FFFFFF}(.+_.+)	{96E54C}:K: (%d+.%d+)	{96E54C}:KK: %d+ :K: %d+.%d+")
+                        line:match("{C0C0C0}%[%d+%] {FFFFFF}(.+)%((%d+)%)	{FFFFFF}(.+_.+)	{96E54C}:K: (%d+.%d+)	.+")
                     finkaKK = "0"
                 end
 
