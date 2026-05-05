@@ -2,12 +2,27 @@
   "users": [
     {
       "name": "Aang_Mercenari",
-      "expires": "2026-06-01",
+      "expires": "lifetime",
       "server": "185.169.134.43"
     },
     {
       "name": "Fanat_MaybeBaby",
+      "expires": "lifetime",
+      "server": "185.169.134.43"
+    },
+    {
+      "name": "Ian_Knickerbocker",
+      "expires": "lifetime",
+      "server": "185.169.134.43"
+    },
+    {
+      "name": "Archangel_Mercenari",
       "expires": "2026-05-15",
+      "server": "185.169.134.43"
+    },
+    {
+      "name": "Etherion_Quentiloria",
+      "expires": "lifetime",
       "server": "185.169.134.43"
     }
   ]
