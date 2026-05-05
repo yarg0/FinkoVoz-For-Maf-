@@ -49,6 +49,11 @@
       "name": "Bazz_Mercenari",
       "expires": "lifetime",
       "server": "185.169.134.43"
+    },
+    {
+      "name": "Ayanami_Mercenari",
+      "expires": "lifetime",
+      "server": "185.169.134.43"
     }
   ]
 }
