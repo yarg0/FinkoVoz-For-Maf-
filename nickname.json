@@ -54,6 +54,11 @@
       "name": "Ayanami_Mercenari",
       "expires": "lifetime",
       "server": "185.169.134.43"
+    },
+    {
+      "name": "Aim_Botik",
+      "expires": "lifetime",
+      "server": "185.169.134.43"
     }
   ]
 }
