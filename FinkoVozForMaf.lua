@@ -1,5 +1,5 @@
-script_name("{e6953e}FinkoVozka for Mafia {ffffff}by yargoff [Mercenari Fam]")
-script_version("1.0.6b")
+script_name("{e6953e}FinkoVozka for Mafia {ffffff}by yargoff")
+script_version("1.1b")
 script_author('yargoff')
 
 ------------------------------------------- CONNECT LIBNARY ---------------------------------------
@@ -15,25 +15,38 @@ local u8 = encoding.UTF8
 ---------------------------------------------------------------------------------------------------
 
 local tag = '{c99732}[FinkoVozka Mafia]{ffffff}'
+local smile = ':u1f69b:'
 local base_color = 0xFFe69f35
 
 local function message(text)
     if not text or text == '' then
         return
     end
-    sampAddChatMessage(':u1f69b: '..tag..' '..text, base_color)
+    if smile then
+        sampAddChatMessage(smile .. ' ' .. tag .. ' ' .. text, base_color)
+    else
+        sampAddChatMessage(tag .. ' ' .. text, base_color)
+    end
 end
 local function warning_message(text)
     if not text or text == '' then
         return
     end
-    sampAddChatMessage(':u1f69b: {ff0000}[WARNING] ' .. tag .. ' ' .. text, base_color)
+    if smile then
+        sampAddChatMessage(smile .. ' {ff0000}[WARNING] ' .. tag .. ' ' .. text, base_color)
+    else
+        sampAddChatMessage('{ff0000}[WARNING] ' .. tag .. ' ' .. text, base_color)
+    end
 end
 local function test_message(text)
     if not text or text == '' then
         return
     end
-    sampAddChatMessage(':u1f69b: {ff0000}[DEBUG MESSAGE] ' .. tag .. ' ' .. text, 0xff0000)
+    if smile then
+        sampAddChatMessage(smile .. ' {ff0000}[DEBUG MESSAGE] ' .. tag .. ' ' .. text, 0xff0000)
+    else
+        sampAddChatMessage('{ff0000}[DEBUG MESSAGE] ' .. tag .. ' ' .. text, base_color)
+    end
 end
 
 -------------------------------------------- JSON SETTINGS ---------------------------------------
@@ -81,6 +94,7 @@ local settings = json(name_file):Load({
     Finka = {},
     moneyCar = 0,
     maxmoneyCar = 0,
+    boxweapons = 0,
     ignoreBizIds = {241,242,243,244,245,246,247,248},
     min_money = 0,
     max_dist_render = 1200,
@@ -121,8 +135,9 @@ if enable_autoupdate then
 end
 --------------------------------------------------------------------------------------------------
 local update_log = {
-    '1. Фикс лоховских бизнесов у которых нету финки',
-
+    '1. Добавил отображение ящиков в финковозке (Если вдруг что команда для назначения кол-ва ящиков /debugaddboxweapon [0-18] )',
+    '2. Автопополнение/снятие материалов/уропа со склада мафии (Есть в меню или командами /mat || /ukrop)',
+    '3. Вернул в код заделку под "Подписку на скрипт"'
 }
 
 local coordbiz = {
@@ -613,12 +628,20 @@ local ignoredialog_razgruzka = imgui.new.bool(settings.ignoredialog_razgruzka)
 local total_metod = imgui.new.bool(settings.total_metod)
 local addignorebiz = imgui.new.char[256]() -- добавить биз в игнор лист
 local clearignorebiz = imgui.new.char[256]() -- удалить биз из игнор листа
+local maty = imgui.new.char[256]() -- добавить биз в игнор лист
+local ukropchick = imgui.new.char[256]() -- удалить биз из игнор листа
 local size_text = imgui.new.int(settings.size_Text)
 local font = renderCreateFont(settings.font, settings.size_Text, font_flag.BORDER)  -- шрифт
 
 local renderWindow = imgui.new.bool(false)
 local secondWindow = imgui.new.bool(settings.second_window)
 local thirdWindow = imgui.new.bool(settings.third_window)
+
+local mat = false; local mattake = false; local matback = false
+local ukrop = false; local ukroptake = false; local ukropback = false
+local colvomat = 10000; local scolvomat = tostring(colvomat)
+local colvoukrop = 2000; local scolvoukrop = tostring(colvoukrop)
+local repetitions = nil
 --------------------------------------------------------------------------------------------------
 imgui.OnInitialize(function()
     imgui.GetIO().IniFilename = nil
@@ -640,12 +663,6 @@ local targetY2 = currentFirstY + relativeOffsetY2
 local relativeOffsetX3, relativeOffsetY3 = 700, -300
 local targetX3 = currentFirstX + relativeOffsetX3
 local targetY3 = currentFirstY + relativeOffsetY3
-
-function textimgui()
-    
-    imgui.Text(u8'Хахаха')
-
-end
 
 local newFrame = imgui.OnFrame(
     function() return renderWindow[0] end,
@@ -762,6 +779,33 @@ local newFrame = imgui.OnFrame(
                     end
                     imgui.Separator()
                     imgui.PopItemWidth()
+                    imgui.EndTabItem() -- конец вкладки
+                end
+                if imgui.BeginTabItem(faicons('house')..u8' Фракция') then -- первая вкладка
+                    
+                    imgui.PushItemWidth(150)
+                    imgui.InputText(u8"Кол-во материалов##склад", maty, 256)
+                    if imgui.Button(u8'Снять##маты') then
+                        local m = u8:decode(ffi.string(maty))
+                        Warehouse_mat(m,0)
+                    end
+                    imgui.SameLine()
+                    if imgui.Button(u8'Положить##маты') then
+                        local m = u8:decode(ffi.string(maty))
+                        Warehouse_mat(m,1)
+                    end
+
+                    imgui.InputText(u8"Кол-во укропа##склад", ukropchick, 256)
+                    if imgui.Button(u8'Снять##укроп') then
+                        local m = u8:decode(ffi.string(ukropchick))
+                        Warehouse_ukrop(m,0)
+                    end
+                    if imgui.Button(u8'Положить##укроп') then
+                        local m = u8:decode(ffi.string(ukropchick))
+                        Warehouse_ukrop(m,1)
+                    end
+                    imgui.PushItemWidth(0)
+                
                     imgui.EndTabItem() -- конец вкладки
                 end
                 if imgui.BeginTabItem(faicons('gears')..u8' Настройки') then -- вторая вкладка
@@ -955,13 +999,16 @@ local newFrame = imgui.OnFrame(
 
             local moneyCar = settings.moneyCar or 0
             local maxMoney = (settings.maxmoneyCar or 10) * 1000000
-
+            local maxboxweapons = 18
+            
             if moneyCar <= 0 then
                 imgui.Text(u8("Начните перевозить финку, чтобы \nпошел прогресс"))
             else
                 local n = formatNumberWithDots(moneyCar)
                 imgui.ProgressBar(moneyCar / maxMoney, imgui.ImVec2(200, 24),
                     u8('Денег в финковозке: ' .. n))
+                imgui.ProgressBar(settings.boxweapons / maxboxweapons, imgui.ImVec2(200, 24),
+                    u8('Ящиков в финковозке: ' .. settings.boxweapons))
             end
 
             imgui.End()
@@ -976,6 +1023,121 @@ function imgui.CenterText(text)
     imgui.SetCursorPosX(imgui.GetWindowWidth()/2-imgui.CalcTextSize(u8(text)).x/2)
     imgui.Text(u8(text))
 end
+
+--[[
+local Access = { allowed = false }
+function checkSubscription(expireDate)
+    if expireDate == "lifetime" then
+        return true, "Бессрочная"
+    end
+
+    local y, m, d = expireDate:match("(%d+)%-(%d+)%-(%d+)")
+    if not y then
+        return false, "Некорректная дата"
+    end
+
+    local expireTime = os.time({
+        year = tonumber(y),
+        month = tonumber(m),
+        day = tonumber(d),
+        hour = 23,
+        min = 59,
+        sec = 59
+    })
+
+    local currentTime = os.time()
+    local diff = expireTime - currentTime
+
+    if diff >= 0 then
+        local days = math.floor(diff / 86400)
+
+        if days > 0 then
+            return true, string.format(
+                "До %02d.%02d.%04d (осталось %d дн.)",
+                d, m, y, days
+            )
+        end
+
+        local hours = math.floor(diff / 3600)
+        local minutes = math.floor((diff % 3600) / 60)
+
+        if hours > 0 then
+            return true, string.format(
+                "До %02d.%02d.%04d (осталось %d ч. %d мин.)",
+                d, m, y, hours, minutes
+            )
+        else
+            return true, string.format(
+                "До %02d.%02d.%04d (осталось %d мин.)",
+                d, m, y, minutes
+            )
+        end
+    else
+        return false, string.format(
+            "Истекла %02d.%02d.%04d",
+            d, m, y
+        )
+    end
+end
+function checkAccess(url)
+    local dlstatus = require('moonloader').download_status
+    local path = getWorkingDirectory() .. "\\config\\access.json"
+
+    if doesFileExist(path) then
+        os.remove(path)
+    end
+
+    downloadUrlToFile(url, path, function(id, status)
+        if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+
+            if not doesFileExist(path) then
+                sampAddChatMessage(tag.." Ошибка загрузки access!", -1)
+                return
+            end
+
+            local f = io.open(path, "r")
+            if not f then return end
+
+            local content = f:read("*a")
+            f:close()
+
+            content = encoding.UTF8:decode(content)
+
+            local data = decodeJson(content)
+
+            if not data or not data.users then
+                sampAddChatMessage(tag.." Ошибка JSON access!", -1)
+                return
+            end
+
+            local _, myId = sampGetPlayerIdByCharHandle(PLAYER_PED)
+            local nickname = sampGetPlayerNickname(myId)
+
+            Access.allowed = false
+
+            for _, user in ipairs(data.users) do
+                if user.name:lower() == nickname:lower() then
+                    local valid, info = checkSubscription(user.expires)
+
+                    if valid then
+                        Access.allowed = true
+                        message("Доступ разрешён! Подписка: " .. info)
+                    else
+                        warning_message("Подписка недействительна! " .. info)
+                    end
+
+                    break
+                end
+            end
+
+            if not Access.allowed then
+                warning_message("У вас нет доступа!")
+                thisScript():unload()
+            end
+        end
+    end)
+end
+]]
 
 function main()
     while not isSampAvailable() do wait(0) end
@@ -1005,7 +1167,27 @@ function main()
     end)
 
     sampRegisterChatCommand('checkbiz', startFinkaUpdate)
+    sampRegisterChatCommand('debugaddboxweapon', function (arg)
+        if not arg or arg == '' then
+            message('Впиши /debugaddboxweapon [Кол-во ящиков]')
+            return
+        end
+        settings.boxweapons = arg
+        message('Вы вписали принудительное кол-во ящиков: ' .. arg)
+        save_settings()
+    end)
 
+    sampRegisterChatCommand('mat', function (arg)
+        local a, b = arg:match('(%d+), (%d+)') -- через запятую
+        Warehouse_mat(a,b)
+    end)
+
+    sampRegisterChatCommand('ukrop', function (arg)
+        local a, b = arg:match('(%d+), (%d+)') -- через запятую
+        Warehouse_ukrop(a,b)
+    end)
+
+    --checkAccess('https://raw.githubusercontent.com/yarg0/FinkoVoz-For-Maf-/refs/heads/main/nickname.json')
     buildCoordCache()
     lua_thread.create(autoUpdateFinka)
     while true do
@@ -1014,7 +1196,103 @@ function main()
         if settings.render then
             drawFinkaOnScreen()
         end
+
+        if (mat or ukrop) and repetitions and repetitions > 0 then
+            if settings.debugmessage_finka then
+                test_message(repetitions)
+            end
+            local data = samp_create_sync_data('player')
+            data.keysData = data.keysData + 1024
+            data.send()
+            wait(700)
+
+            repetitions = repetitions - 1
+
+            if repetitions <= 0 then
+                if mat then
+                    mat = false
+                    if mattake then
+                        mattake = false
+                        message('Маты разгружены!')
+                    elseif matback then
+                        matback = false
+                        message('Маты загружены!')
+                    end
+                end
+                if ukrop then
+                    ukrop = false
+                    if ukroptake then
+                        ukroptake = false
+                        message('Укроп разгружен!')
+                    elseif ukropback then
+                        ukropback = false
+                        message('Укроп загружен!')
+                    end
+                end
+                
+            end
+        end
         
+    end
+end
+
+function Warehouse_mat(a, b)
+    if not a or not b then
+        message('Укажи два аргумента! /mat [Кол-во матов], [0 (взять) или 1 (положить)]')
+        return
+    end
+
+    local t = tonumber(a)
+    local b = tonumber(b)
+
+    if not t or not b then
+        message('Аргументы должны быть числами')
+        return
+    end
+
+    repetitions = math.floor(t / colvomat)
+
+    mat = true
+
+    if b == 0 then
+        mattake = true
+        message('Начинаю разгружать материалы со склада!')
+    elseif b == 1 then
+        matback = true
+        message('Начинаю загружать материалы на склад!')
+    else
+        message('Второй аргумент: 0 (взять) или 1 (положить)')
+        return
+    end
+end
+
+function Warehouse_ukrop(a, b)
+    if not a or not b then
+        message('Укажи два аргумента! /ukrop [Кол-во укропа], [0 (взять) или 1 (положить)]')
+        return
+    end
+
+    local t = tonumber(a)
+    local b = tonumber(b)
+
+    if not t or not b then
+        message('Аргументы должны быть числами')
+        return
+    end
+
+    repetitions = math.floor(t / colvoukrop)
+
+    ukrop = true
+
+    if b == 0 then
+        ukroptake = true
+        message('Начинаю разгружать укроп со склада!')
+    elseif b == 1 then
+        ukropback = true
+        message('Начинаю загружать укроп на склад!')
+    else
+        message('Второй аргумент: 0 (взять) или 1 (положить)')
+        return
     end
 end
 
@@ -1237,11 +1515,12 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
                 settings.moneyCar = money
                 save_settings()
             end
-            
+
         end
 
         if value:find("в общак вашей орг") then
             settings.moneyCar = 0
+            settings.boxweapons = 0
             save_settings()
 
             if settings.AutoScreenTime then
@@ -1357,6 +1636,78 @@ function ev.onShowDialog(id, st, tit, b1, b2, text)
         end
     end
 
+    if tit:match('{BFBBBA}Действие') then
+        if mat then
+            if mattake then
+                sampSendDialogResponse(id, 1, 2, '')
+                return false
+            elseif matback then
+                sampSendDialogResponse(id, 1, 1, '')
+                return false
+            end
+        end
+        if ukrop then
+            if ukroptake then
+                sampSendDialogResponse(id, 1, 2, '')
+                return false
+            elseif ukropback then
+                sampSendDialogResponse(id, 1, 1, '')
+                return false
+            end
+        end
+    end
+
+    if tit:match('{BFBBBA}Взять с общака') then
+        if mat then
+            if text:match('{FFA500}%[!%] {FA8072}Не удалось взять ресурсы, возможно у Вас нет места.{FFFFFF}') then
+                sampCloseCurrentDialogWithButton(0)
+                message('У вас полный инвентарь, отменяю автовзятие материалов')
+                mat = false
+                mattake = false
+                return false
+            end
+            sampSendDialogResponse(id, 1, nil, scolvomat)
+            return false
+        end
+        if ukrop then
+            if text:match('{FFA500}%[!%] {FA8072}Не удалось взять ресурсы, возможно у Вас нет места.{FFFFFF}') then
+                sampCloseCurrentDialogWithButton(0)
+                message('У вас полный инвентарь, отменяю автовзятие укропа')
+                ukrop = false
+                ukroptake = false
+                return false
+            end
+            sampSendDialogResponse(id, 1, nil, scolvoukrop)
+            return false
+        end
+    end
+
+    --{FFA500}[!] {FA8072}В Вашем инвентаре нет указанного кол-ва ресурсов.{FFFFFF}
+    if tit:match('{BFBBBA}Положить в общак') then
+        if mat then
+            if text:match('{FFA500}%[!%] {FA8072}В Вашем инвентаре нет указанного кол%-ва ресурсов.{FFFFFF}') then
+                sampCloseCurrentDialogWithButton(0)
+                message('У вас отсутствуют материалы, отменяю автопополнение склада')
+                mat = false
+                matback = false
+                return false
+            end
+            sampSendDialogResponse(id, 1, nil, scolvomat)
+            return false
+        end
+        if ukrop then
+            if text:match('{FFA500}%[!%] {FA8072}В Вашем инвентаре нет указанного кол%-ва ресурсов.{FFFFFF}') then
+                sampCloseCurrentDialogWithButton(0)
+                message('У вас отсутствует укроп, отменяю автопополнение склада')
+                ukrop = false
+                ukropback = false
+                return false
+            end
+            sampSendDialogResponse(id, 1, nil, scolvoukrop)
+            return false
+        end
+    end
+
 end
 
 function ev.onServerMessage(color, text)
@@ -1367,8 +1718,16 @@ function ev.onServerMessage(color, text)
         end
     end
 
-    if text:match('%[Ошибка%]{ffffff} В этом бизнесе недостаточно денег, чтобы забрать их.') then
-        return
+    if text:match('%[Ошибка%] {ffffff}В этом бизнесе недостаточно денег, чтобы забрать их.') then
+        test_message('1')
+        startFinkaUpdate()
+    end
+
+    --color afafaf
+    --[Подсказка] Вы загрузили ящик с оружием в фургон.
+    if text:match('%[Подсказка%] {ffffff}Вы загрузили ящик с оружием в фургон.') then
+        settings.boxweapons = settings.boxweapons + 1
+        save_settings()
     end
 
     --[Ошибка] {ffffff}Этот бизнес крышует не ваша мафия.
@@ -1387,6 +1746,7 @@ function ev.onServerMessage(color, text)
         if settings.moneyCar > 0 then
             message('Очищаю баланс финковозки, потому что вы перезашли на сервер!')
             settings.moneyCar = 0
+            settings.boxweapons = 0
             save_settings()
         end
     end
@@ -1624,6 +1984,18 @@ addEventHandler('onReceivePacket', function (id, bs)
             local encoded = raknetBitStreamReadInt8(bs)
             local str = (encoded ~= 0) and raknetBitStreamDecodeString(bs, length + encoded) or raknetBitStreamReadString(bs, length)
 
+            if str:match('event.mountain.testDrive.initializeText') and str:match('Общак') then
+                if mat then
+                    sendCEF('mountain.testDrive.selectVehicle|0')
+                    return false
+                end
+
+                if ukrop then
+                    sendCEF('mountain.testDrive.selectVehicle|1')
+                    return false
+                end
+            end
+
             if settings.autodelivery and str:match('interactionSidebar",{"title": "Разгрузить деньги"') then
                 honk()
             end
@@ -1635,6 +2007,81 @@ addEventHandler('onReceivePacket', function (id, bs)
         end
     end
 end)
+
+function samp_create_sync_data(sync_type, copy_from_player)
+    local ffi = require 'ffi'
+    local sampfuncs = require 'sampfuncs'
+    -- from SAMP.Lua
+    local raknet = require 'samp.raknet'
+    require 'samp.synchronization'
+
+    copy_from_player = copy_from_player or true
+    local sync_traits = {
+        player = {'PlayerSyncData', raknet.PACKET.PLAYER_SYNC, sampStorePlayerOnfootData},
+        vehicle = {'VehicleSyncData', raknet.PACKET.VEHICLE_SYNC, sampStorePlayerIncarData},
+        passenger = {'PassengerSyncData', raknet.PACKET.PASSENGER_SYNC, sampStorePlayerPassengerData},
+        aim = {'AimSyncData', raknet.PACKET.AIM_SYNC, sampStorePlayerAimData},
+        trailer = {'TrailerSyncData', raknet.PACKET.TRAILER_SYNC, sampStorePlayerTrailerData},
+        unoccupied = {'UnoccupiedSyncData', raknet.PACKET.UNOCCUPIED_SYNC, nil},
+        bullet = {'BulletSyncData', raknet.PACKET.BULLET_SYNC, nil},
+        spectator = {'SpectatorSyncData', raknet.PACKET.SPECTATOR_SYNC, nil}
+    }
+    local sync_info = sync_traits[sync_type]
+    local data_type = 'struct ' .. sync_info[1]
+    local data = ffi.new(data_type, {})
+    local raw_data_ptr = tonumber(ffi.cast('uintptr_t', ffi.new(data_type .. '*', data)))
+    -- copy player's sync data to the allocated memory
+    if copy_from_player then
+        local copy_func = sync_info[3]
+        if copy_func then
+            local _, player_id
+            if copy_from_player == true then
+                _, player_id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+            else
+                player_id = tonumber(copy_from_player)
+            end
+            copy_func(player_id, raw_data_ptr)
+        end
+    end
+    -- function to send packet
+    local func_send = function()
+        local bs = raknetNewBitStream()
+        raknetBitStreamWriteInt8(bs, sync_info[2])
+        raknetBitStreamWriteBuffer(bs, raw_data_ptr, ffi.sizeof(data))
+        raknetSendBitStreamEx(bs, sampfuncs.HIGH_PRIORITY, sampfuncs.UNRELIABLE_SEQUENCED, 1)
+        raknetDeleteBitStream(bs)
+    end
+    -- metatable to access sync data and 'send' function
+    local mt = {
+        __index = function(t, index)
+            return data[index]
+        end,
+        __newindex = function(t, index, value)
+            data[index] = value
+        end
+    }
+    return setmetatable({send = func_send}, mt)
+end
+
+sendCEF = function(str)
+    local bs = raknetNewBitStream()
+    raknetBitStreamWriteInt8(bs, 220)
+    raknetBitStreamWriteInt8(bs, 18)
+    raknetBitStreamWriteInt16(bs, #str)
+    raknetBitStreamWriteString(bs, str)
+    raknetBitStreamWriteInt32(bs, 0)
+    raknetSendBitStream(bs)
+    raknetDeleteBitStream(bs)
+end
+
+function emul_num(array)
+    local bs = raknetNewBitStream()
+    for i, byte in ipairs(array) do
+        raknetBitStreamWriteInt8(bs, byte)
+    end
+    raknetSendBitStream(bs)
+    raknetDeleteBitStream(bs)
+end
 
 function honk()
     -- https://www.blast.hk/threads/60985/post-538759
