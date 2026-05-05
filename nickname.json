@@ -2,11 +2,13 @@
   "users": [
     {
       "name": "Aang_Mercenari",
-      "expires": "2026-06-01"
+      "expires": "2026-06-01",
+      "server": "185.169.134.43"
     },
     {
       "name": "Fanat_MaybeBaby",
-      "expires": "2026-05-15"
+      "expires": "2026-05-15",
+      "server": "185.169.134.43"
     }
   ]
 }
