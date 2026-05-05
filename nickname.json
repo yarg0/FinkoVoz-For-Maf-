@@ -1,15 +1,12 @@
 {
-    "users": [
-        "Aang_Mercenari",
-        "Fanat_MaybeBaby",
-        "Ian_Knickerbocker",
-        "Conclusive_Mercenari",
-        "Etherion_Quentiloria",
-        "Tale_Krucifix",
-        "Bazz_Mercenari",
-        "Archangel_Mercenari",
-        "Zayne_Mercenari",
-        "Aleksander_Kutuzov",
-        "Blake_Mercenari"
-    ]
+  "users": [
+    {
+      "name": "Aang_Mercenari",
+      "expires": "2026-06-01"
+    },
+    {
+      "name": "Fanat_MaybeBaby",
+      "expires": "lifetime"
+    }
+  ]
 }
