@@ -24,6 +24,21 @@
       "name": "Etherion_Quentiloria",
       "expires": "lifetime",
       "server": "185.169.134.43"
+    },
+    {
+      "name": "Eida_Mercenari",
+      "expires": "2026-05-15",
+      "server": "185.169.134.43"
+    },
+    {
+      "name": "Conclusive_Mercenari",
+      "expires": "2026-05-15",
+      "server": "185.169.134.43"
+    },
+    {
+      "name": "Zayne_Mercenari",
+      "expires": "2026-05-15",
+      "server": "185.169.134.43"
     }
   ]
 }
