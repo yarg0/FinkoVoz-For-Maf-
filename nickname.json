@@ -17,7 +17,7 @@
     },
     {
       "name": "Archangel_Mercenari",
-      "expires": "2026-05-15",
+      "expires": "2026-05-31",
       "server": "185.169.134.43"
     },
     {
@@ -32,13 +32,23 @@
     },
     {
       "name": "Conclusive_Mercenari",
-      "expires": "2026-05-15",
+      "expires": "lifetime",
       "server": "185.169.134.43"
     },
     {
       "name": "Zayne_Mercenari",
       "expires": "2026-05-15",
       "server": "185.169.134.43"
-    }
+    },
+    {
+      "name": "Tale_Krucifix",
+      "expires": "lifetime",
+      "server": "185.169.134.43"
+    },
+    {
+      "name": "Bazz_Mercenari",
+      "expires": "lifetime",
+      "server": "185.169.134.43"
+    },
   ]
 }
