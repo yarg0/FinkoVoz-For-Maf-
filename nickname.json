@@ -7,7 +7,7 @@
     },
     {
       "name": "Fanat_MaybeBaby",
-      "expires": "2027-05-31",
+      "expires": "2050-05-31",
       "server": "185.169.134.43"
     },
     {
@@ -17,7 +17,7 @@
     },
     {
       "name": "Archangel_Mercenari",
-      "expires": "2026-05-31",
+      "expires": "lifetime",
       "server": "185.169.134.43"
     },
     {
@@ -27,7 +27,7 @@
     },
     {
       "name": "Eida_Mercenari",
-      "expires": "2026-05-15",
+      "expires": "lifetime",
       "server": "185.169.134.43"
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "name": "Zayne_Mercenari",
-      "expires": "2026-05-15",
+      "expires": "lifetime",
       "server": "185.169.134.43"
     },
     {
